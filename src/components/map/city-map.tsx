@@ -47,13 +47,14 @@ export interface CityMapProps {
 
 /* ---------- 内部控制器们 ---------- */
 
-/** 挂载时适配全部街巷视野；goHomeSignal 变化时飞回家 */
+/** 挂载时适配全部街巷视野；goHomeSignal 变化时飞回家；回放选择变化时飞到回放街巷 */
 function ViewportController({
   streets,
   home,
   fitAllSignal,
   goHomeSignal,
-}: Pick<CityMapProps, "streets" | "home" | "fitAllSignal" | "goHomeSignal">) {
+  replayStreetIds,
+}: Pick<CityMapProps, "streets" | "home" | "fitAllSignal" | "goHomeSignal" | "replayStreetIds">) {
   const map = useMap();
 
   // 初始：有街巷则框住全部，否则定位到家
@@ -85,6 +86,18 @@ function ViewportController({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitAllSignal]);
+
+  /** 历史回放：选中的日记变化时，视野飞到该次走过的街巷 */
+  useEffect(() => {
+    if (!replayStreetIds || replayStreetIds.length === 0) return;
+    const points = streets
+      .filter((s) => replayStreetIds.includes(s.id))
+      .flatMap((s) => s.path);
+    if (points.length >= 2) {
+      map.flyToBounds(L.latLngBounds(points), { padding: [48, 48], duration: 0.8 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayStreetIds?.join(",")]);
 
   return null;
 }
