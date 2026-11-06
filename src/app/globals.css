@@ -5,73 +5,75 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* ---------- shadcn 设计令牌：暖橙/琥珀色系（点亮城市之光） ---------- */
-  --background: hsl(33 60% 97%);
-  --foreground: hsl(20 14% 12%);
+  /* ---------- shadcn 设计令牌：糖果色系（小朋友的甜味城市） ---------- */
+  --background: hsl(48 100% 97%);
+  --foreground: hsl(265 35% 22%);
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(20 14% 12%);
+  --card-foreground: hsl(265 35% 22%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(20 14% 12%);
-  --primary: hsl(32 95% 44%);
+  --popover-foreground: hsl(265 35% 22%);
+  --primary: hsl(340 82% 62%);
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(30 35% 93%);
-  --secondary-foreground: hsl(20 14% 20%);
-  --muted: hsl(30 25% 92%);
-  --muted-foreground: hsl(25 8% 45%);
-  --accent: hsl(30 90% 94%);
-  --accent-foreground: hsl(25 70% 30%);
-  --destructive: hsl(0 72% 46%);
+  --secondary: hsl(160 55% 92%);
+  --secondary-foreground: hsl(172 45% 26%);
+  --muted: hsl(45 45% 93%);
+  --muted-foreground: hsl(265 12% 48%);
+  --accent: hsl(52 100% 90%);
+  --accent-foreground: hsl(38 80% 32%);
+  --destructive: hsl(0 74% 56%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(30 18% 88%);
-  --input: hsl(30 18% 84%);
-  --ring: hsl(32 95% 53%);
-  --chart-1: hsl(32 95% 44%);
-  --chart-2: hsl(27 87% 55%);
-  --chart-3: hsl(43 96% 56%);
-  --chart-4: hsl(16 80% 52%);
-  --chart-5: hsl(35 60% 70%);
-  --radius: 1rem;
+  --border: hsl(45 40% 87%);
+  --input: hsl(45 40% 82%);
+  --ring: hsl(340 82% 66%);
+  /* 糖果图表色板：粉 / 薄荷 / 柠檬 / 天空蓝 / 薰衣草 */
+  --chart-1: hsl(340 82% 62%);
+  --chart-2: hsl(160 60% 48%);
+  --chart-3: hsl(47 100% 55%);
+  --chart-4: hsl(205 90% 60%);
+  --chart-5: hsl(262 70% 66%);
+  --radius: 1.25rem;
 
   /* ---------- 液态玻璃令牌（全局可调强度） ---------- */
   --glass-blur: 16px;
-  --glass-opacity: 0.6;
+  --glass-opacity: 0.62;
   --glass-bg: rgb(255 255 255 / var(--glass-opacity));
-  --glass-border: rgb(255 255 255 / 0.5);
-  --glass-highlight: rgb(255 255 255 / 0.55);
-  --glass-shadow: 0 8px 32px hsl(30 40% 25% / 0.1);
+  --glass-border: rgb(255 255 255 / 0.65);
+  --glass-highlight: rgb(255 255 255 / 0.7);
+  --glass-shadow: 0 8px 32px hsl(340 50% 60% / 0.12);
 }
 
 .dark {
-  --background: hsl(22 16% 8%);
-  --foreground: hsl(30 25% 92%);
-  --card: hsl(22 14% 12%);
-  --card-foreground: hsl(30 25% 92%);
-  --popover: hsl(22 14% 12%);
-  --popover-foreground: hsl(30 25% 92%);
-  --primary: hsl(38 92% 52%);
-  --primary-foreground: hsl(24 70% 12%);
-  --secondary: hsl(22 10% 18%);
-  --secondary-foreground: hsl(30 20% 88%);
-  --muted: hsl(22 10% 16%);
-  --muted-foreground: hsl(28 10% 62%);
-  --accent: hsl(28 30% 20%);
-  --accent-foreground: hsl(38 90% 78%);
-  --destructive: hsl(0 62% 40%);
+  /* 深梅子夜空：糖果色在暗底上更亮一档 */
+  --background: hsl(258 32% 10%);
+  --foreground: hsl(45 60% 93%);
+  --card: hsl(258 28% 14%);
+  --card-foreground: hsl(45 60% 93%);
+  --popover: hsl(258 28% 14%);
+  --popover-foreground: hsl(45 60% 93%);
+  --primary: hsl(340 90% 68%);
+  --primary-foreground: hsl(258 40% 10%);
+  --secondary: hsl(172 40% 20%);
+  --secondary-foreground: hsl(160 55% 85%);
+  --muted: hsl(258 22% 18%);
+  --muted-foreground: hsl(45 25% 65%);
+  --accent: hsl(47 80% 26%);
+  --accent-foreground: hsl(52 100% 82%);
+  --destructive: hsl(0 66% 50%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(25 12% 22%);
-  --input: hsl(25 12% 26%);
-  --ring: hsl(38 92% 55%);
-  --chart-1: hsl(38 92% 52%);
-  --chart-2: hsl(27 87% 60%);
-  --chart-3: hsl(43 96% 62%);
-  --chart-4: hsl(16 80% 58%);
-  --chart-5: hsl(35 60% 72%);
+  --border: hsl(258 22% 24%);
+  --input: hsl(258 22% 28%);
+  --ring: hsl(340 90% 70%);
+  --chart-1: hsl(340 90% 68%);
+  --chart-2: hsl(160 65% 55%);
+  --chart-3: hsl(47 100% 60%);
+  --chart-4: hsl(205 95% 66%);
+  --chart-5: hsl(262 80% 72%);
 
-  /* 深色玻璃：bg-black/40 + 白色高光更收敛 */
-  --glass-opacity: 0.4;
-  --glass-bg: rgb(0 0 0 / var(--glass-opacity));
-  --glass-border: rgb(255 255 255 / 0.14);
-  --glass-highlight: rgb(255 255 255 / 0.16);
+  /* 深色玻璃：梅子色调半透明底 + 收敛高光 */
+  --glass-opacity: 0.5;
+  --glass-bg: rgb(24 16 34 / var(--glass-opacity));
+  --glass-border: rgb(255 255 255 / 0.16);
+  --glass-highlight: rgb(255 255 255 / 0.18);
   --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.45);
 }
 
@@ -100,9 +102,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 4px);
-  --radius-lg: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 6px);
+  --radius-lg: calc(var(--radius) - 3px);
   --radius-xl: var(--radius);
 
   /* 默认系统字体栈（离线友好），数字场景用 tabular-nums 工具类 */
@@ -115,6 +117,56 @@
 }
 
 /* ---------- 液态玻璃基础层 ---------- */
+
+/* 成就庆祝：卡片弹出 + 粒子迸发（克制版，2 秒内结束） */
+@keyframes celebrate-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes celebrate-burst {
+  0% {
+    transform: rotate(var(--burst-angle)) translateY(-18px) scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(var(--burst-angle)) translateY(-120px) scale(1);
+    opacity: 0;
+  }
+}
+
+.celebrate-card {
+  animation: celebrate-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.celebrate-particle {
+  animation: celebrate-burst 1.1s ease-out 0.1s both;
+}
+
+/* Leaflet 弹窗融入糖果圆角风 */
+.leaflet-popup-content-wrapper {
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 32px hsl(340 50% 50% / 0.18);
+}
+
+.leaflet-container {
+  font-family: inherit;
+  background: hsl(45 30% 92%);
+}
+.dark .leaflet-container {
+  background: hsl(258 25% 14%);
+}
+
 
 @utility glass {
   background: var(--glass-bg);
@@ -134,7 +186,7 @@
   border: 1px solid var(--glass-border);
   box-shadow:
     inset 0 1px 0 0 var(--glass-highlight),
-    0 -1px 0 0 rgb(255 255 255 / 0.06),
+    0 -1px 0 0 rgb(255 255 255 / 0.08),
     var(--glass-shadow);
 }
 
@@ -149,17 +201,22 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    /* 暖色光晕背景：让玻璃卡片的 blur 有内容可折射，呼应"城市之光" */
+    /* 糖果光晕背景：粉 / 薄荷 / 天空蓝三团彩色光，让玻璃卡片有甜味可折射 */
     background-image:
       radial-gradient(
-        1100px 700px at 85% -10%,
-        hsl(38 92% 55% / 0.12),
+        1000px 640px at 88% -12%,
+        hsl(340 85% 66% / 0.14),
         transparent 60%
       ),
       radial-gradient(
-        900px 650px at -10% 105%,
-        hsl(16 80% 52% / 0.09),
+        860px 600px at -12% 30%,
+        hsl(160 65% 55% / 0.1),
         transparent 55%
+      ),
+      radial-gradient(
+        900px 620px at 50% 108%,
+        hsl(205 90% 62% / 0.1),
+        transparent 58%
       );
     background-attachment: fixed;
     overscroll-behavior-y: none;

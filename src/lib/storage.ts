@@ -141,6 +141,93 @@ export function saveAllData(data: CityGlowData): void {
   writeRaw(STORAGE_KEYS.achievements, JSON.stringify(migrated.achievements));
 }
 
+/* ---------- 各分片独立读写（组件按需更新，避免全量序列化） ---------- */
+
+export function saveSettings(settings: CityGlowData["settings"]): void {
+  writeRaw(STORAGE_KEYS.settings, JSON.stringify(settings));
+}
+
+export function saveStreets(streets: CityGlowData["streets"]): void {
+  writeRaw(STORAGE_KEYS.streets, JSON.stringify(streets));
+}
+
+export function saveRecords(records: CityGlowData["records"]): void {
+  writeRaw(STORAGE_KEYS.records, JSON.stringify(records));
+}
+
+export function saveKnowledge(knowledge: CityGlowData["knowledge"]): void {
+  writeRaw(STORAGE_KEYS.knowledge, JSON.stringify(knowledge));
+}
+
+export function saveAchievements(achievements: CityGlowData["achievements"]): void {
+  writeRaw(STORAGE_KEYS.achievements, JSON.stringify(achievements));
+}
+
+/** 按 id upsert 街巷：存在则替换，不存在则插入头部 */
+export function upsertStreet(street: CityGlowData["streets"][number]): CityGlowData["streets"] {
+  const streets = loadAllData().streets;
+  const idx = streets.findIndex((s) => s.id === street.id);
+  const next = idx >= 0
+    ? streets.map((s) => (s.id === street.id ? street : s))
+    : [street, ...streets];
+  saveStreets(next);
+  return next;
+}
+
+/** 按 id 删除街巷 */
+export function removeStreet(id: string): CityGlowData["streets"] {
+  const streets = loadAllData().streets.filter((s) => s.id !== id);
+  saveStreets(streets);
+  return streets;
+}
+
+/** 按 id upsert 探索日记 */
+export function upsertRecord(record: CityGlowData["records"][number]): CityGlowData["records"] {
+  const records = loadAllData().records;
+  const idx = records.findIndex((r) => r.id === record.id);
+  const next = idx >= 0
+    ? records.map((r) => (r.id === record.id ? record : r))
+    : [record, ...records];
+  // 时间线按日期倒序展示，写入时保持有序
+  next.sort((a, b) => b.date.localeCompare(a.date));
+  saveRecords(next);
+  return next;
+}
+
+export function removeRecord(id: string): CityGlowData["records"] {
+  const records = loadAllData().records.filter((r) => r.id !== id);
+  saveRecords(records);
+  return records;
+}
+
+/** 按 id upsert 知识卡片 */
+export function upsertKnowledge(card: CityGlowData["knowledge"][number]): CityGlowData["knowledge"] {
+  const knowledge = loadAllData().knowledge;
+  const idx = knowledge.findIndex((k) => k.id === card.id);
+  const next = idx >= 0
+    ? knowledge.map((k) => (k.id === card.id ? card : k))
+    : [card, ...knowledge];
+  next.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  saveKnowledge(next);
+  return next;
+}
+
+export function removeKnowledge(id: string): CityGlowData["knowledge"] {
+  const knowledge = loadAllData().knowledge.filter((k) => k.id !== id);
+  saveKnowledge(knowledge);
+  return knowledge;
+}
+
+/** 清空全部分片（保留默认 settings），返回清空后的数据 */
+export function clearAllData(): CityGlowData {
+  const fresh: CityGlowData = {
+    ...DEFAULT_DATA,
+    settings: { ...DEFAULT_DATA.settings, cityName: loadAllData().settings.cityName || DEFAULT_DATA.settings.cityName },
+  };
+  saveAllData(fresh);
+  return fresh;
+}
+
 /** 估算 localStorage 占用字节数（设置页展示"数据占用 X KB"） */
 export function estimateStorageBytes(): number {
   if (!isBrowser()) return 0;

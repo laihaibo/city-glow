@@ -22,11 +22,14 @@ export interface CityGlowSettings {
 
 export type StreetStatus = "done" | "doing" | "todo";
 
+export type StreetPriority = "high" | "medium" | "low";
+export type StreetDifficulty = "easy" | "medium" | "hard";
+
 export interface Street {
   id: string;
-  /** 如"文亭街" */
+  /** 如"中山路" */
   name: string;
-  /** 如"老城 / 东区 / 南湖" */
+  /** 如"海曙老城 / 江北外滩 / 鄞州中心 / 东部新城" */
   region: string;
   /** [lat, lng] 路径点序列，绘制时沿路径点击生成 */
   path: [number, number][];
@@ -35,6 +38,10 @@ export interface Street {
   /** 最近一次走过的日期（ISO 8601） */
   lastWalkedAt?: string;
   notes?: string;
+  /** 待走池优先级（Phase 4 路线规划用） */
+  priority?: StreetPriority;
+  /** 难度（孩子体力 / 距离考量） */
+  difficulty?: StreetDifficulty;
 }
 
 export interface ExplorationRecord {
@@ -100,9 +107,9 @@ export interface CityGlowData {
 export const DEFAULT_DATA: CityGlowData = {
   settings: {
     schemaVersion: SCHEMA_VERSION,
-    cityName: "徐州",
+    cityName: "宁波",
     theme: "auto",
-    homeLocation: { lat: 34.2617, lng: 117.1853 },
+    homeLocation: { lat: 29.8712, lng: 121.5458 },
   },
   streets: [],
   records: [],
