@@ -1,13 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Settings2, Trophy } from "lucide-react";
 import { GlassCard } from "@/components/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ThemeSwitcher } from "@/components/profile/theme-switcher";
 import { useCityGlow } from "@/lib/hooks";
 import { deriveStats, BADGES } from "@/lib/achievements";
+import { downloadBackup, importBackupFile } from "@/lib/export";
+import { loadSeedData } from "@/lib/seed";
+import { estimateStorageBytes, clearAllData } from "@/lib/storage";
 import { cn } from "cn";
 
 export default function ProfilePage() {
@@ -26,6 +38,21 @@ export default function ProfilePage() {
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [data]);
+
+  /* ---- 数据管理 ---- */
+  const [storageKb, setStorageKb] = useState<number | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ready) setStorageKb(Math.round(estimateStorageBytes() / 1024));
+  }, [ready, data]);
+
+  function handleImportFile(file: File) {
+    void importBackupFile(file).then((ok) => {
+      alert(ok ? "导入成功：数据已按 id 合并。" : "导入失败：不是有效的 City Glow 备份文件。");
+    });
+  }
 
   if (!ready || !data || !stats) {
     return (
@@ -152,32 +179,93 @@ export default function ProfilePage() {
         </GlassCard>
       </section>
 
-      {/* 数据管理（Phase 5 启用） */}
+      {/* 数据管理 */}
       <section className="space-y-3">
         <h2 className="text-base font-semibold">数据管理</h2>
         <GlassCard className="p-2">
           <button
             type="button"
-            disabled
-            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium"
+            onClick={() => data && downloadBackup(data)}
+            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium hover:bg-muted/60"
           >
             ⬇️ <span className="flex-1 text-left">导出 JSON 备份</span>
-            <span className="text-xs text-muted-foreground">Phase 5 开放</span>
+            <span className="text-xs text-muted-foreground">全部数据打包</span>
+          </button>
+          <Separator className="opacity-60" />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImportFile(file);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium hover:bg-muted/60"
+          >
+            ⬆️ <span className="flex-1 text-left">导入备份恢复</span>
+            <span className="text-xs text-muted-foreground">按 id 合并不覆盖</span>
           </button>
           <Separator className="opacity-60" />
           <button
             type="button"
-            disabled
-            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium"
+            onClick={() => {
+              loadSeedData();
+              alert("宁波示例数据已载入：12 条街巷、3 篇日记、4 张知识卡。去地图看看！");
+            }}
+            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium hover:bg-muted/60"
           >
-            ⬆️ <span className="flex-1 text-left">导入备份恢复</span>
-            <span className="text-xs text-muted-foreground">Phase 5 开放</span>
+            🍊 <span className="flex-1 text-left">载入宁波示例数据</span>
+            <span className="text-xs text-muted-foreground">先看看效果</span>
+          </button>
+          <Separator className="opacity-60" />
+          <button
+            type="button"
+            onClick={() => setClearOpen(true)}
+            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium text-destructive hover:bg-destructive/10"
+          >
+            🗑️ <span className="flex-1 text-left">清空所有数据</span>
+            <span className="text-xs text-muted-foreground">不可恢复</span>
           </button>
         </GlassCard>
         <p className="text-center text-xs text-muted-foreground">
           所有数据仅存于浏览器本地（localStorage），不上传任何云端
+          {storageKb !== null && <> · 数据占用 {storageKb} KB</>}
         </p>
       </section>
+
+      {/* 清空确认对话框 */}
+      <Dialog open={clearOpen} onOpenChange={setClearOpen}>
+        <DialogContent className="glass-strong max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>清空所有数据？</DialogTitle>
+            <DialogDescription>
+              街巷、日记、知识卡片和成就都会被删除，且无法恢复。建议先「导出 JSON 备份」。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setClearOpen(false)} className="rounded-2xl">
+              再想想
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                clearAllData();
+                setClearOpen(false);
+                window.location.reload();
+              }}
+              className="rounded-2xl"
+            >
+              确认清空
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
