@@ -1,71 +1,70 @@
-import type { Metadata } from "next";
-import {
-  Download,
-  Lock,
-  MapPin,
-  Settings2,
-  Trash2,
-  Trophy,
-  Upload,
-} from "lucide-react";
+"use client";
+
+import { useMemo } from "react";
+import { Lock, Settings2, Trophy } from "lucide-react";
 import { GlassCard } from "@/components/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ThemeSwitcher } from "@/components/profile/theme-switcher";
-
-export const metadata: Metadata = { title: "我的" };
-
-/** 成就墙占位徽章，Phase 3 接入真实解锁逻辑 */
-const DEMO_ACHIEVEMENTS = [
-  { name: "老城 50 巷", desc: "走完老城区 50 条街巷" },
-  { name: "百巷达人", desc: "累计走过 100 条街巷" },
-  { name: "东区工业通", desc: "探索东区工业片区" },
-  { name: "黄泛寻迹者", desc: "收集 10 张地理变迁卡片" },
-];
-
-/** 数据管理入口，Phase 5 开放导入导出与清空 */
-const DATA_ACTIONS = [
-  { icon: Download, label: "导出 JSON 备份", hint: "Phase 5 开放" },
-  { icon: Upload, label: "导入备份恢复", hint: "Phase 5 开放" },
-  { icon: Trash2, label: "清空所有数据", hint: "Phase 5 开放", danger: true },
-];
+import { useCityGlow } from "@/lib/hooks";
+import { deriveStats, BADGES } from "@/lib/achievements";
+import { cn } from "cn";
 
 export default function ProfilePage() {
+  const { ready, data } = useCityGlow();
+
+  const stats = useMemo(() => (data ? deriveStats(data) : null), [data]);
+
+  /** 探索排行榜：同行人出场次数（本地、无多人） */
+  const leaderboard = useMemo(() => {
+    if (!data) return [];
+    const counts = new Map<string, number>();
+    for (const r of data.records) {
+      for (const c of r.companions) {
+        counts.set(c, (counts.get(c) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [data]);
+
+  if (!ready || !data || !stats) {
+    return (
+      <div className="glass flex h-[50dvh] items-center justify-center rounded-3xl">
+        <p className="animate-pulse text-sm text-muted-foreground">正在打开成就墙……</p>
+      </div>
+    );
+  }
+
+  const unlockedIds = new Set(data.achievements.unlocked.map((u) => u.id));
+  const unlockedCount = BADGES.filter((b) => unlockedIds.has(b.id)).length;
+
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-bold tracking-tight">我的</h1>
 
       {/* 城市档案卡 */}
-      <GlassCard className="p-5">
+      <GlassCard className="bg-gradient-to-br from-chart-1/14 to-transparent p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-lg font-bold">徐州</p>
+            <p className="text-lg font-bold">{data.settings.cityName}</p>
             <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="size-3.5" aria-hidden />
-              家的位置：市中心 · 34.26, 117.19
+              🏠 家的位置：{data.settings.homeLocation.lat.toFixed(2)},{" "}
+              {data.settings.homeLocation.lng.toFixed(2)}
             </p>
           </div>
           <Badge variant="secondary" className="rounded-full text-xs">
-            Phase 2 可编辑
+            已点亮 {unlockedCount}/{BADGES.length} 枚徽章
           </Badge>
         </div>
-        <div className="mt-4 grid grid-cols-3 divide-x divide-border/60 text-center">
-          <div>
-            <p className="font-mono text-lg font-bold tabular-nums">128</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">街巷</p>
-          </div>
-          <div>
-            <p className="font-mono text-lg font-bold tabular-nums">21</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">日记</p>
-          </div>
-          <div>
-            <p className="font-mono text-lg font-bold tabular-nums">14</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">知识卡</p>
-          </div>
+        <div className="mt-4 grid grid-cols-4 divide-x divide-border/60 text-center">
+          <ProfileStat label="街巷" value={stats.doneStreets} />
+          <ProfileStat label="日记" value={stats.explorationCount} />
+          <ProfileStat label="知识卡" value={stats.knowledgeCount} />
+          <ProfileStat label="里程" value={Math.round(stats.totalKm)} unit="km" />
         </div>
       </GlassCard>
 
-      {/* 外观设置 */}
+      {/* 外观 */}
       <GlassCard className="p-4">
         <div className="flex items-center gap-2">
           <Settings2 className="size-4 text-primary" aria-hidden />
@@ -81,46 +80,116 @@ export default function ProfilePage() {
         <div className="flex items-center gap-2">
           <Trophy className="size-4 text-primary" aria-hidden />
           <h2 className="text-base font-semibold">成就墙</h2>
-          <Badge variant="secondary" className="rounded-full text-xs">
-            Phase 3 解锁
-          </Badge>
+          <span className="font-mono text-xs text-muted-foreground tabular-nums">
+            {unlockedCount}/{BADGES.length}
+          </span>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {DEMO_ACHIEVEMENTS.map(({ name, desc }) => (
-            <GlassCard key={name} className="p-4 text-center opacity-70">
-              <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Lock className="size-4.5" aria-hidden />
-              </span>
-              <p className="mt-2.5 text-sm font-semibold">{name}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
-            </GlassCard>
-          ))}
-        </div>
+        {(["数量", "区域", "内容"] as const).map((group) => (
+          <div key={group} className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">{group}</p>
+            <div className="grid grid-cols-2 gap-3">
+              {BADGES.filter((b) => b.group === group).map((badge) => {
+                const unlocked = unlockedIds.has(badge.id);
+                const progress = badge.progress?.(stats);
+                return (
+                  <GlassCard
+                    key={badge.id}
+                    className={cn(
+                      "p-4 text-center transition-opacity",
+                      !unlocked && "opacity-70",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "mx-auto flex size-10 items-center justify-center rounded-full text-xl",
+                        unlocked ? "bg-primary/15" : "bg-muted text-muted-foreground",
+                      )}
+                      aria-hidden
+                    >
+                      {unlocked ? badge.emoji : <Lock className="size-4" />}
+                    </span>
+                    <p className="mt-2 text-sm font-semibold">{badge.name}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {badge.description}
+                    </p>
+                    {!unlocked && progress && progress.target > 1 && (
+                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground/80 tabular-nums">
+                        {progress.current}/{progress.target}
+                      </p>
+                    )}
+                  </GlassCard>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </section>
 
-      {/* 数据管理 */}
+      {/* 探索排行榜 */}
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold">🥇 探索排行榜</h2>
+        <GlassCard className="p-4">
+          {leaderboard.length === 0 ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">
+              写下第一篇日记后，这里会排出来谁跟爸爸妈妈走得最多
+            </p>
+          ) : (
+            <ol className="space-y-2.5">
+              {leaderboard.map(([name, count], i) => (
+                <li key={name} className="flex items-center gap-3">
+                  <span className="w-6 text-center text-base" aria-hidden>
+                    {["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`}
+                  </span>
+                  <span className="flex-1 text-sm font-medium">{name}</span>
+                  <span className="font-mono text-sm font-bold text-primary tabular-nums">
+                    {count}
+                  </span>
+                  <span className="text-xs text-muted-foreground">次</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </GlassCard>
+      </section>
+
+      {/* 数据管理（Phase 5 启用） */}
       <section className="space-y-3">
         <h2 className="text-base font-semibold">数据管理</h2>
         <GlassCard className="p-2">
-          {DATA_ACTIONS.map(({ icon: Icon, label, hint, danger }, index) => (
-            <div key={label}>
-              {index > 0 && <Separator className="opacity-60" />}
-              <button
-                type="button"
-                disabled
-                className={`flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium ${danger ? "text-destructive" : "text-foreground"}`}
-              >
-                <Icon className="size-4.5" aria-hidden />
-                <span className="flex-1 text-left">{label}</span>
-                <span className="text-xs text-muted-foreground">{hint}</span>
-              </button>
-            </div>
-          ))}
+          <button
+            type="button"
+            disabled
+            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium"
+          >
+            ⬇️ <span className="flex-1 text-left">导出 JSON 备份</span>
+            <span className="text-xs text-muted-foreground">Phase 5 开放</span>
+          </button>
+          <Separator className="opacity-60" />
+          <button
+            type="button"
+            disabled
+            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium"
+          >
+            ⬆️ <span className="flex-1 text-left">导入备份恢复</span>
+            <span className="text-xs text-muted-foreground">Phase 5 开放</span>
+          </button>
         </GlassCard>
         <p className="text-center text-xs text-muted-foreground">
-          所有数据仅存于浏览器本地（localStorage），不上传任何云端 · 数据占用 -- KB
+          所有数据仅存于浏览器本地（localStorage），不上传任何云端
         </p>
       </section>
+    </div>
+  );
+}
+
+function ProfileStat({ label, value, unit }: { label: string; value: number; unit?: string }) {
+  return (
+    <div>
+      <p className="font-mono text-lg font-bold tabular-nums">
+        {value}
+        {unit && <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">{unit}</span>}
+      </p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }

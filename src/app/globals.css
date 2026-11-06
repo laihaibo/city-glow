@@ -167,6 +167,57 @@
   background: hsl(258 25% 14%);
 }
 
+/* ---------- Markdown 渲染样式（日记/知识卡正文） ---------- */
+.md-body p {
+  margin: 0.35rem 0;
+  line-height: 1.75;
+}
+.md-body .md-gap {
+  height: 0.5rem;
+}
+.md-body .md-list {
+  margin: 0.35rem 0;
+  padding-left: 1.4rem;
+  list-style: disc;
+}
+.md-body .md-list li {
+  margin: 0.2rem 0;
+  line-height: 1.7;
+}
+.md-body .md-h {
+  margin: 0.9rem 0 0.35rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.md-body .md-h:first-child {
+  margin-top: 0;
+}
+.md-body .md-h1 {
+  font-size: 1.1rem;
+}
+.md-body .md-h2 {
+  font-size: 1.05rem;
+}
+.md-body .md-h3 {
+  font-size: 1rem;
+}
+.md-body .md-code {
+  border-radius: 0.5rem;
+  background: hsl(45 45% 90%);
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+.dark .md-body .md-code {
+  background: hsl(258 22% 22%);
+}
+.md-body .md-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+
 
 @utility glass {
   background: var(--glass-bg);
