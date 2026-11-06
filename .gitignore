@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 会话/工具状态文件夹
+.zcode/
+.mimosa/

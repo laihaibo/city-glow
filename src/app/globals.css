@@ -1,26 +1,167 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* 深色模式由 next-themes 以 class 方式挂在 <html> 上 */
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ---------- shadcn 设计令牌：暖橙/琥珀色系（点亮城市之光） ---------- */
+  --background: hsl(33 60% 97%);
+  --foreground: hsl(20 14% 12%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(20 14% 12%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(20 14% 12%);
+  --primary: hsl(32 95% 44%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(30 35% 93%);
+  --secondary-foreground: hsl(20 14% 20%);
+  --muted: hsl(30 25% 92%);
+  --muted-foreground: hsl(25 8% 45%);
+  --accent: hsl(30 90% 94%);
+  --accent-foreground: hsl(25 70% 30%);
+  --destructive: hsl(0 72% 46%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(30 18% 88%);
+  --input: hsl(30 18% 84%);
+  --ring: hsl(32 95% 53%);
+  --chart-1: hsl(32 95% 44%);
+  --chart-2: hsl(27 87% 55%);
+  --chart-3: hsl(43 96% 56%);
+  --chart-4: hsl(16 80% 52%);
+  --chart-5: hsl(35 60% 70%);
+  --radius: 1rem;
+
+  /* ---------- 液态玻璃令牌（全局可调强度） ---------- */
+  --glass-blur: 16px;
+  --glass-opacity: 0.6;
+  --glass-bg: rgb(255 255 255 / var(--glass-opacity));
+  --glass-border: rgb(255 255 255 / 0.5);
+  --glass-highlight: rgb(255 255 255 / 0.55);
+  --glass-shadow: 0 8px 32px hsl(30 40% 25% / 0.1);
+}
+
+.dark {
+  --background: hsl(22 16% 8%);
+  --foreground: hsl(30 25% 92%);
+  --card: hsl(22 14% 12%);
+  --card-foreground: hsl(30 25% 92%);
+  --popover: hsl(22 14% 12%);
+  --popover-foreground: hsl(30 25% 92%);
+  --primary: hsl(38 92% 52%);
+  --primary-foreground: hsl(24 70% 12%);
+  --secondary: hsl(22 10% 18%);
+  --secondary-foreground: hsl(30 20% 88%);
+  --muted: hsl(22 10% 16%);
+  --muted-foreground: hsl(28 10% 62%);
+  --accent: hsl(28 30% 20%);
+  --accent-foreground: hsl(38 90% 78%);
+  --destructive: hsl(0 62% 40%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(25 12% 22%);
+  --input: hsl(25 12% 26%);
+  --ring: hsl(38 92% 55%);
+  --chart-1: hsl(38 92% 52%);
+  --chart-2: hsl(27 87% 60%);
+  --chart-3: hsl(43 96% 62%);
+  --chart-4: hsl(16 80% 58%);
+  --chart-5: hsl(35 60% 72%);
+
+  /* 深色玻璃：bg-black/40 + 白色高光更收敛 */
+  --glass-opacity: 0.4;
+  --glass-bg: rgb(0 0 0 / var(--glass-opacity));
+  --glass-border: rgb(255 255 255 / 0.14);
+  --glass-highlight: rgb(255 255 255 / 0.16);
+  --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.45);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: calc(var(--radius) - 2px);
+  --radius-xl: var(--radius);
+
+  /* 默认系统字体栈（离线友好），数字场景用 tabular-nums 工具类 */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "PingFang SC",
+    "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Consolas,
+    monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------- 液态玻璃基础层 ---------- */
+
+@utility glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    var(--glass-shadow);
+}
+
+/* 更强的玻璃层：底栏、浮层、对话框 */
+@utility glass-strong {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(1.8);
+  backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(1.8);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    0 -1px 0 0 rgb(255 255 255 / 0.06),
+    var(--glass-shadow);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    /* 暖色光晕背景：让玻璃卡片的 blur 有内容可折射，呼应"城市之光" */
+    background-image:
+      radial-gradient(
+        1100px 700px at 85% -10%,
+        hsl(38 92% 55% / 0.12),
+        transparent 60%
+      ),
+      radial-gradient(
+        900px 650px at -10% 105%,
+        hsl(16 80% 52% / 0.09),
+        transparent 55%
+      );
+    background-attachment: fixed;
+    overscroll-behavior-y: none;
+  }
 }
