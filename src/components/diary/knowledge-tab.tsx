@@ -34,7 +34,7 @@ const CATEGORIES: { value: KnowledgeCategory; label: string; emoji: string }[] =
 const CATEGORY_META = new Map(CATEGORIES.map((c) => [c.value, c]));
 
 export function KnowledgeTab() {
-  const { ready, data, updateKnowledge } = useCityGlow();
+  const { ready, cityData, activeCity, updateKnowledge } = useCityGlow();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<KnowledgeCard | null>(null);
@@ -45,8 +45,8 @@ export function KnowledgeTab() {
   const [detail, setDetail] = useState<KnowledgeCard | null>(null);
   const [filter, setFilter] = useState<KnowledgeCategory | "all">("all");
 
-  const streets = data?.streets ?? [];
-  const knowledge = data?.knowledge ?? [];
+  const streets = cityData?.streets ?? [];
+  const knowledge = cityData?.knowledge ?? [];
 
   const filtered = useMemo(
     () => (filter === "all" ? knowledge : knowledge.filter((k) => k.category === filter)),
@@ -72,9 +72,10 @@ export function KnowledgeTab() {
   }
 
   function handleSave() {
-    if (!data || !title.trim()) return;
+    if (!cityData || !activeCity || !title.trim()) return;
     const card: KnowledgeCard = {
       id: editing?.id ?? nanoid(10),
+      cityId: activeCity.id,
       streetId: streetId || undefined,
       title: title.trim(),
       content,
@@ -82,19 +83,18 @@ export function KnowledgeTab() {
       createdAt: editing?.createdAt ?? new Date().toISOString(),
     };
     const next = editing
-      ? data.knowledge.map((c) => (c.id === card.id ? card : c))
-      : [card, ...data.knowledge];
+      ? knowledge.map((c) => (c.id === card.id ? card : c))
+      : [card, ...knowledge];
     next.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     updateKnowledge(next);
     setOpen(false);
   }
 
   function handleDelete(id: string) {
-    if (!data) return;
-    updateKnowledge(data.knowledge.filter((c) => c.id !== id));
+    updateKnowledge(knowledge.filter((c) => c.id !== id));
   }
 
-  if (!ready || !data) {
+  if (!ready || !cityData) {
     return <TabSkeleton text="正在整理卡片盒……" />;
   }
 

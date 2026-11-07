@@ -9,9 +9,15 @@ import type {
   KnowledgeCard,
   Street,
 } from "@/lib/types";
+import { DEFAULT_DATA } from "@/lib/types";
 import { loadAllData, saveAllData } from "@/lib/storage";
 
-const SEED_STREETS: Street[] = [
+/** seed 数据定义时不带 cityId，载入时统一挂到当前激活城市 */
+type SeedStreet = Omit<Street, "cityId">;
+type SeedRecord = Omit<ExplorationRecord, "cityId">;
+type SeedKnowledge = Omit<KnowledgeCard, "cityId">;
+
+const SEED_STREETS: SeedStreet[] = [
   {
     id: "seed-st-zhongshan",
     name: "中山路",
@@ -168,7 +174,7 @@ const SEED_STREETS: Street[] = [
   },
 ];
 
-const SEED_RECORDS: ExplorationRecord[] = [
+const SEED_RECORDS: SeedRecord[] = [
   {
     id: "seed-rc-1",
     date: "2026-10-18",
@@ -198,7 +204,7 @@ const SEED_RECORDS: ExplorationRecord[] = [
   },
 ];
 
-const SEED_KNOWLEDGE: KnowledgeCard[] = [
+const SEED_KNOWLEDGE: SeedKnowledge[] = [
   {
     id: "seed-kn-tianfeng",
     title: "天封塔：18 层地基托起的唐代地标",
@@ -237,31 +243,25 @@ const SEED_KNOWLEDGE: KnowledgeCard[] = [
   },
 ];
 
-/** 返回带示例数据的完整数据集（不落盘，由调用方决定写与否） */
-export function buildSeedData(): CityGlowData {
+/** 返回带示例数据的完整数据集（挂到指定城市，不落盘，由调用方决定写与否） */
+export function buildSeedData(cityId: string): CityGlowData {
   const achievements = {
     unlocked: [],
     stats: { totalStreets: 0, totalKm: 0, regionsCovered: 0 },
   };
   return {
-    settings: {
-      schemaVersion: 1,
-      cityName: "宁波",
-      theme: "auto",
-      homeLocation: { lat: 29.8712, lng: 121.5458 },
-    },
-    streets: SEED_STREETS,
-    records: SEED_RECORDS,
-    knowledge: SEED_KNOWLEDGE,
+    settings: DEFAULT_DATA.settings,
+    streets: SEED_STREETS.map((s) => ({ ...s, cityId })),
+    records: SEED_RECORDS.map((r) => ({ ...r, cityId })),
+    knowledge: SEED_KNOWLEDGE.map((k) => ({ ...k, cityId })),
     achievements,
   };
 }
 
-/** 把示例数据按 id 幂等合并入本地存储，返回合并后的数据 */
+/** 把示例数据按 id 幂等合并入本地存储（挂到当前激活城市），返回合并后的数据 */
 export function loadSeedData(): CityGlowData {
-  // 延迟导入避免循环依赖：storage 不依赖 seed，这里直接引没问题
   const current = loadAllData();
-  const seed = buildSeedData();
+  const seed = buildSeedData(current.settings.activeCityId);
 
   const streetMap = new Map(current.streets.map((s) => [s.id, s]));
   for (const s of seed.streets) {

@@ -9,15 +9,25 @@
  * schemaVersion 用于跨年升级时的字段迁移——这是让数据能用十年的保险。
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+/** 城市档案：City Glow 支持多城市（常驻地 + 老家 + 旅行城市……） */
+export interface CityInfo {
+  id: string;
+  /** 如"宁波""徐州" */
+  name: string;
+  /** 该城市的"家/市中心"，地图初始中心点 */
+  homeLocation: { lat: number; lng: number };
+  /** 加入日期（ISO 8601） */
+  createdAt: string;
+}
 
 export interface CityGlowSettings {
   schemaVersion: number;
-  /** 默认城市，如"徐州" */
-  cityName: string;
+  /** 城市列表（≥1），activeCityId 指向其中 */
+  cities: CityInfo[];
+  activeCityId: string;
   theme: "light" | "dark" | "auto";
-  /** 家的位置，地图初始中心点 */
-  homeLocation: { lat: number; lng: number };
 }
 
 export type StreetStatus = "done" | "doing" | "todo";
@@ -27,6 +37,8 @@ export type StreetDifficulty = "easy" | "medium" | "hard";
 
 export interface Street {
   id: string;
+  /** 所属城市（CityInfo.id） */
+  cityId: string;
   /** 如"中山路" */
   name: string;
   /** 如"海曙老城 / 江北外滩 / 鄞州中心 / 东部新城" */
@@ -46,6 +58,8 @@ export interface Street {
 
 export interface ExplorationRecord {
   id: string;
+  /** 所属城市（CityInfo.id） */
+  cityId: string;
   /** YYYY-MM-DD */
   date: string;
   /** 同行人，如 ["爸爸", "女儿"] */
@@ -70,6 +84,8 @@ export type KnowledgeCategory =
 
 export interface KnowledgeCard {
   id: string;
+  /** 所属城市（CityInfo.id） */
+  cityId: string;
   /** 关联街巷，可选 */
   streetId?: string;
   title: string;
@@ -103,13 +119,25 @@ export interface CityGlowData {
   achievements: Achievements;
 }
 
+/**
+ * 迁移固定城市 id：v1 的单一城市（宁波）迁移后挂在这个 id 上，保证幂等。
+ */
+export const LEGACY_CITY_ID = "city-legacy";
+
 /** 首次使用时的默认数据 */
 export const DEFAULT_DATA: CityGlowData = {
   settings: {
     schemaVersion: SCHEMA_VERSION,
-    cityName: "宁波",
+    cities: [
+      {
+        id: LEGACY_CITY_ID,
+        name: "宁波",
+        homeLocation: { lat: 29.8712, lng: 121.5458 },
+        createdAt: "2026-11-06T00:00:00.000Z",
+      },
+    ],
+    activeCityId: LEGACY_CITY_ID,
     theme: "auto",
-    homeLocation: { lat: 29.8712, lng: 121.5458 },
   },
   streets: [],
   records: [],

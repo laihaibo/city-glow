@@ -53,16 +53,26 @@ export function validateBackup(raw: unknown): BackupFile | null {
 
 /**
  * 合并策略（按 id 并集，冲突取较新者）：
- * - streets: lastWalkedAt 较新者胜，单边独有直接并入
+ * - cities: 按 id 并集（本地优先），两边城市档案都保留
+ * - streets: lastWalkedAt 较新者胜，单边独有直接并入（cityId 随数据走）
  * - records / knowledge: 并集，id 相同视为同一条（保留本地版本）
  * - achievements: unlocked 按 id 并集，stats 逐项取最大
- * - settings: 备份胜出（带过来的城市与家的位置通常更新）
- * 导入前旧版本号数据先经 migrateData 升级。
+ * - activeCityId: 备份胜出（指向的城市不存在时回退本地值）
+ * 导入前旧版本号数据先经 migrateData 升级（v1 备份也会被自动迁移）。
  */
 export function mergeBackup(local: CityGlowData, backup: BackupFile): CityGlowData {
   const incoming = migrateData(backup.data);
+  const cities = mergeById(local.settings.cities, incoming.settings.cities);
+  const settings: CityGlowData["settings"] = {
+    schemaVersion: SCHEMA_VERSION,
+    cities,
+    activeCityId: cities.some((c) => c.id === incoming.settings.activeCityId)
+      ? incoming.settings.activeCityId
+      : local.settings.activeCityId,
+    theme: incoming.settings.theme ?? local.settings.theme,
+  };
   const merged: CityGlowData = {
-    settings: { ...incoming.settings, schemaVersion: SCHEMA_VERSION },
+    settings,
     streets: mergeStreets(local.streets, incoming.streets),
     records: mergeById(local.records, incoming.records),
     knowledge: mergeById(local.knowledge, incoming.knowledge),

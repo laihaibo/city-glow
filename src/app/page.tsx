@@ -6,43 +6,49 @@ import { ChevronRight, Footprints, MapPinned, NotebookPen, Route, Sparkles } fro
 import { GlassCard } from "@/components/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { TabSkeleton } from "@/components/diary/diary-tab";
+import { CitySwitcher } from "@/components/city/city-switcher";
 import { useCityGlow } from "@/lib/hooks";
 
 export default function HomePage() {
-  const { ready, data } = useCityGlow();
+  const { ready, data, cityData, activeCity } = useCityGlow();
 
   const stats = useMemo(() => {
-    if (!data) return null;
-    const done = data.streets.filter((s) => s.status === "done");
-    const regions = [...new Set(data.streets.map((s) => s.region))];
+    if (!cityData) return null;
+    const done = cityData.streets.filter((s) => s.status === "done");
+    const regions = [...new Set(cityData.streets.map((s) => s.region))];
     const litRegions = new Set(done.map((s) => s.region));
     return {
       doneCount: done.length,
       totalKm: done.reduce((sum, s) => sum + s.lengthKm, 0),
       coverage: regions.length > 0 ? Math.round((litRegions.size / regions.length) * 100) : 0,
-      explorations: data.records.length,
+      explorations: cityData.records.length,
       recent: [...done]
         .filter((s) => s.lastWalkedAt)
         .sort((a, b) => (b.lastWalkedAt ?? "").localeCompare(a.lastWalkedAt ?? ""))
         .slice(0, 5),
     };
-  }, [data]);
+  }, [cityData]);
 
-  if (!ready || !data || !stats) {
+  if (!ready || !cityData || !stats) {
     return <TabSkeleton text="正在点亮城市……" />;
   }
 
-  const hasAnyData = data.streets.length > 0 || data.records.length > 0;
+  const hasAnyData = cityData.streets.length > 0 || cityData.records.length > 0;
 
   return (
     <div className="space-y-5">
       {/* 品牌英雄区 */}
       <GlassCard className="overflow-hidden bg-gradient-to-br from-primary/16 via-primary/6 to-transparent p-6">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Sparkles className="size-4 text-primary" aria-hidden />
-          {data.settings.cityName} · 周末亲子探索
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Sparkles className="size-4 shrink-0 text-primary" aria-hidden />
+            周末亲子探索
+          </div>
+          <CitySwitcher />
         </div>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight">点亮城市之光</h1>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight">
+          点亮{activeCity?.name ?? "城市"}之光
+        </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           从家门口出发，把走过的每条街划线点亮。走过几百条街巷，孩子自会发现认识一座城市的范式。
         </p>
@@ -70,7 +76,7 @@ export default function HomePage() {
           <h2 className="text-base font-semibold">探索足迹</h2>
           {hasAnyData && (
             <Badge variant="secondary" className="rounded-full text-xs">
-              {data.settings.cityName}
+              {activeCity?.name}
             </Badge>
           )}
         </div>
@@ -127,7 +133,7 @@ export default function HomePage() {
         {stats.recent.length === 0 ? (
           <GlassCard className="border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">
-              还没有点亮任何街巷。去地图画下第一条，或先「载入宁波示例数据」看看效果（在「我的」页）。
+              还没有点亮任何街巷。去地图画下第一条，或者先「载入示例数据」看看效果（在「我的」页）。
             </p>
           </GlassCard>
         ) : (

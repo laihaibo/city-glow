@@ -41,12 +41,12 @@ const DIFFICULTY_LABEL: Record<StreetDifficulty, string> = {
 const PRIORITY_CYCLE: StreetPriority[] = ["high", "medium", "low"];
 
 export default function PlanPage() {
-  const { ready, data, updateStreets } = useCityGlow();
+  const { ready, cityData, activeCity, updateStreets } = useCityGlow();
   const [route, setRoute] = useState<RouteStop[] | null>(null);
   const [noteEditing, setNoteEditing] = useState<Street | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
-  const streets = useMemo(() => data?.streets ?? [], [data]);
+  const streets = useMemo(() => cityData?.streets ?? [], [cityData]);
   const todoStreets = useMemo(
     () => streets.filter((s) => s.status === "todo" || s.status === "doing"),
     [streets],
@@ -64,20 +64,20 @@ export default function PlanPage() {
 
   /** 优先级循环切换：高 → 中 → 低 → 高 */
   function cyclePriority(street: Street) {
-    if (!data) return;
+    if (!cityData) return;
     const next: StreetPriority =
       PRIORITY_CYCLE[(PRIORITY_CYCLE.indexOf(street.priority ?? "medium") + 1) % 3];
     updateStreets(
-      data.streets.map((s) =>
+      streets.map((s) =>
         s.id === street.id ? { ...s, priority: next } : s,
       ),
     );
   }
 
   function saveNote() {
-    if (!data || !noteEditing) return;
+    if (!cityData || !noteEditing) return;
     updateStreets(
-      data.streets.map((s) =>
+      streets.map((s) =>
         s.id === noteEditing.id ? { ...s, notes: noteDraft || undefined } : s,
       ),
     );
@@ -86,21 +86,21 @@ export default function PlanPage() {
 
   /** 一键把路线上的街巷标为「在走」 */
   function startRoute() {
-    if (!data || !route) return;
+    if (!cityData || !route) return;
     const ids = new Set(route.map((stop) => stop.streetId));
     updateStreets(
-      data.streets.map((s) =>
+      streets.map((s) =>
         ids.has(s.id) && s.status === "todo" ? { ...s, status: "doing" } : s,
       ),
     );
     setRoute(null);
   }
 
-  if (!ready || !data) {
+  if (!ready || !cityData || !activeCity) {
     return <TabSkeleton text="正在整理待走清单……" />;
   }
 
-  const home = [data.settings.homeLocation.lat, data.settings.homeLocation.lng] as [number, number];
+  const home = [activeCity.homeLocation.lat, activeCity.homeLocation.lng] as [number, number];
 
   return (
     <div className="space-y-4">

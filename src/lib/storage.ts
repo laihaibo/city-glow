@@ -1,5 +1,5 @@
-import type { CityGlowData } from "@/lib/types";
-import { DEFAULT_DATA, SCHEMA_VERSION } from "@/lib/types";
+import type { CityGlowData, CityInfo } from "@/lib/types";
+import { DEFAULT_DATA, LEGACY_CITY_ID, SCHEMA_VERSION } from "@/lib/types";
 
 /**
  * localStorage 读写统一入口。
@@ -98,7 +98,12 @@ export function loadAllData(): CityGlowData {
 }
 
 function isSettings(value: unknown): value is CityGlowData["settings"] {
-  return typeof value === "object" && value !== null && "cityName" in value;
+  // v1（cityName）与 v2（cities/activeCityId）都放行，统一交给 migrateData 处理
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ("cityName" in value || ("cities" in value && "activeCityId" in value))
+  );
 }
 
 function isStreetArray(value: unknown): value is CityGlowData["streets"] {
@@ -124,17 +129,48 @@ function isAchievements(value: unknown): value is CityGlowData["achievements"] {
 
 /**
  * 版本迁移：schemaVersion < SCHEMA_VERSION 时逐级升级数据结构。
- * Phase 1 为占位实现；从 Phase 2 起每次数据结构变更都在这里追加迁移步骤，
+ * 从 Phase 2 起每次数据结构变更都在这里追加迁移步骤，
  * 迁移必须保证旧数据字段不丢失（只增不删、改名留别名）。
  */
 export function migrateData(data: CityGlowData): CityGlowData {
   let current = data;
-  // 示例：if (current.settings.schemaVersion < 2) { ...升级到 v2... }
+  if (current.settings.schemaVersion < 2) {
+    current = migrateV1ToV2(current);
+  }
   current = {
     ...current,
     settings: { ...current.settings, schemaVersion: SCHEMA_VERSION },
   };
   return current;
+}
+
+/**
+ * v1 → v2：单一城市设置（cityName/homeLocation）迁出为 cities[0]，
+ * 全部街巷/日记/知识卡补 cityId。迁移 id 固定为 LEGACY_CITY_ID，重复执行幂等。
+ */
+function migrateV1ToV2(data: CityGlowData): CityGlowData {
+  const legacy = data.settings as CityGlowData["settings"] & {
+    cityName?: string;
+    homeLocation?: { lat: number; lng: number };
+  };
+  const city: CityInfo = {
+    id: LEGACY_CITY_ID,
+    name: legacy.cityName?.trim() || "宁波",
+    homeLocation: legacy.homeLocation ?? { lat: 29.8712, lng: 121.5458 },
+    createdAt: new Date().toISOString(),
+  };
+  return {
+    settings: {
+      schemaVersion: SCHEMA_VERSION,
+      cities: [city],
+      activeCityId: LEGACY_CITY_ID,
+      theme: data.settings.theme ?? "auto",
+    },
+    streets: data.streets.map((s) => ({ ...s, cityId: s.cityId ?? LEGACY_CITY_ID })),
+    records: data.records.map((r) => ({ ...r, cityId: r.cityId ?? LEGACY_CITY_ID })),
+    knowledge: data.knowledge.map((k) => ({ ...k, cityId: k.cityId ?? LEGACY_CITY_ID })),
+    achievements: data.achievements,
+  };
 }
 
 /** 全量写回所有分片（导入恢复时使用，Phase 5 完善） */
@@ -224,11 +260,13 @@ export function removeKnowledge(id: string): CityGlowData["knowledge"] {
   return knowledge;
 }
 
-/** 清空全部分片（保留默认 settings），返回清空后的数据 */
+/** 清空全部分片（保留城市档案），返回清空后的数据 */
 export function clearAllData(): CityGlowData {
+  const current = loadAllData();
   const fresh: CityGlowData = {
     ...DEFAULT_DATA,
-    settings: { ...DEFAULT_DATA.settings, cityName: loadAllData().settings.cityName || DEFAULT_DATA.settings.cityName },
+    // 清空数据但保留城市列表与当前城市（城市是"档案"而非"内容"）
+    settings: { ...DEFAULT_DATA.settings, cities: current.settings.cities, activeCityId: current.settings.activeCityId },
   };
   saveAllData(fresh);
   return fresh;

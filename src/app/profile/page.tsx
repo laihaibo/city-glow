@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ThemeSwitcher } from "@/components/profile/theme-switcher";
+import { CityManager } from "@/components/profile/city-manager";
 import { useCityGlow } from "@/lib/hooks";
 import { deriveStats, BADGES } from "@/lib/achievements";
 import { downloadBackup, importBackupFile } from "@/lib/export";
@@ -23,7 +24,7 @@ import { estimateStorageBytes, clearAllData } from "@/lib/storage";
 import { cn } from "cn";
 
 export default function ProfilePage() {
-  const { ready, data } = useCityGlow();
+  const { ready, data, activeCity } = useCityGlow();
 
   const stats = useMemo(() => (data ? deriveStats(data) : null), [data]);
 
@@ -54,7 +55,7 @@ export default function ProfilePage() {
     });
   }
 
-  if (!ready || !data || !stats) {
+  if (!ready || !data || !stats || !activeCity) {
     return (
       <div className="glass flex h-[50dvh] items-center justify-center rounded-3xl">
         <p className="animate-pulse text-sm text-muted-foreground">正在打开成就墙……</p>
@@ -69,14 +70,14 @@ export default function ProfilePage() {
     <div className="space-y-5">
       <h1 className="text-xl font-bold tracking-tight">我的</h1>
 
-      {/* 城市档案卡 */}
+      {/* 城市档案卡（当前城市概览） */}
       <GlassCard className="bg-gradient-to-br from-chart-1/14 to-transparent p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-lg font-bold">{data.settings.cityName}</p>
+            <p className="text-lg font-bold">{activeCity.name}</p>
             <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-              🏠 家的位置：{data.settings.homeLocation.lat.toFixed(2)},{" "}
-              {data.settings.homeLocation.lng.toFixed(2)}
+              🏠 城市中心：{activeCity.homeLocation.lat.toFixed(2)},{" "}
+              {activeCity.homeLocation.lng.toFixed(2)}
             </p>
           </div>
           <Badge variant="secondary" className="rounded-full text-xs">
@@ -90,6 +91,9 @@ export default function ProfilePage() {
           <ProfileStat label="里程" value={Math.round(stats.totalKm)} unit="km" />
         </div>
       </GlassCard>
+
+      {/* 城市管理：多城市切换 / 添加 / 删除 */}
+      <CityManager />
 
       {/* 外观 */}
       <GlassCard className="p-4">
@@ -211,18 +215,22 @@ export default function ProfilePage() {
             ⬆️ <span className="flex-1 text-left">导入备份恢复</span>
             <span className="text-xs text-muted-foreground">按 id 合并不覆盖</span>
           </button>
-          <Separator className="opacity-60" />
-          <button
-            type="button"
-            onClick={() => {
-              loadSeedData();
-              alert("宁波示例数据已载入：12 条街巷、3 篇日记、4 张知识卡。去地图看看！");
-            }}
-            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium hover:bg-muted/60"
-          >
-            🍊 <span className="flex-1 text-left">载入宁波示例数据</span>
-            <span className="text-xs text-muted-foreground">先看看效果</span>
-          </button>
+          {activeCity.name === "宁波" && (
+            <>
+              <Separator className="opacity-60" />
+              <button
+                type="button"
+                onClick={() => {
+                  loadSeedData();
+                  alert("宁波示例数据已载入：12 条街巷、3 篇日记、4 张知识卡。去地图看看！");
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-sm font-medium hover:bg-muted/60"
+              >
+                🍊 <span className="flex-1 text-left">载入宁波示例数据</span>
+                <span className="text-xs text-muted-foreground">先看看效果</span>
+              </button>
+            </>
+          )}
           <Separator className="opacity-60" />
           <button
             type="button"

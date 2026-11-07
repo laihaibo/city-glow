@@ -52,7 +52,7 @@ const STATUS_STYLE: Record<StreetStatus, string> = {
 };
 
 export default function MapPage() {
-  const { ready, data, updateStreets } = useCityGlow();
+  const { ready, data, cityData, activeCity, updateStreets } = useCityGlow();
   const { key: tiandituKey, saveKey } = useTiandituKey();
   const [mode, setMode] = useState<MapMode>("browse");
   const [heatmap, setHeatmap] = useState(false);
@@ -69,8 +69,8 @@ export default function MapPage() {
   const [region, setRegion] = useState("");
   const [status, setStatus] = useState<StreetStatus>("done");
 
-  const streets = useMemo(() => data?.streets ?? [], [data]);
-  const records = useMemo(() => data?.records ?? [], [data]);
+  const streets = useMemo(() => cityData?.streets ?? [], [cityData]);
+  const records = useMemo(() => cityData?.records ?? [], [cityData]);
   const regions = useMemo(
     () => [...new Set(streets.map((s) => s.region))].sort(),
     [streets],
@@ -95,10 +95,11 @@ export default function MapPage() {
   };
 
   const handleSaveStreet = () => {
-    if (!data || !name.trim() || drawPath.length < 2) return;
+    if (!data || !cityData || !activeCity || !name.trim() || drawPath.length < 2) return;
     const today = new Date().toISOString().slice(0, 10);
     const street: Street = {
       id: nanoid(10),
+      cityId: activeCity.id,
       name: name.trim(),
       region: region.trim() || "未分区",
       path: drawPath,
@@ -107,7 +108,7 @@ export default function MapPage() {
       lastWalkedAt: status === "done" ? today : undefined,
       priority: "medium",
     };
-    updateStreets([street, ...data.streets]);
+    updateStreets([street, ...cityData.streets]);
     setSaveOpen(false);
     setName("");
     setRegion("");
@@ -117,7 +118,7 @@ export default function MapPage() {
 
   /** 区域勾选：点击街巷行在 已走 ↔ 待走 间切换 */
   const toggleStreetStatus = (street: Street) => {
-    if (!data) return;
+    if (!cityData) return;
     const nextStatus: StreetStatus = street.status === "done" ? "todo" : "done";
     updateStreets(
       streets.map((s) =>
@@ -147,7 +148,7 @@ export default function MapPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight">足迹地图</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {data.settings.cityName} · 在底图上划线标注街巷，点亮走过的路
+            {activeCity?.name ?? "…"} · 在底图上划线标注街巷，点亮走过的路
           </p>
         </div>
         <Badge variant="secondary" className="shrink-0 rounded-full text-xs">
@@ -200,7 +201,7 @@ export default function MapPage() {
           <CityMapDynamic
             streets={streets}
             records={records}
-            home={[data.settings.homeLocation.lat, data.settings.homeLocation.lng]}
+            home={activeCity ? [activeCity.homeLocation.lat, activeCity.homeLocation.lng] : [0, 0]}
             mode={mode}
             heatmap={heatmap}
             drawPath={drawPath}

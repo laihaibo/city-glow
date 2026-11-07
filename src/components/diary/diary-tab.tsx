@@ -42,7 +42,7 @@ function todayStr(): string {
 }
 
 export function DiaryTab() {
-  const { ready, data, updateRecords } = useCityGlow();
+  const { ready, cityData, activeCity, updateRecords } = useCityGlow();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ExplorationRecord | null>(null);
@@ -55,8 +55,8 @@ export function DiaryTab() {
   const [customCompanion, setCustomCompanion] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  const streets = data?.streets ?? [];
-  const records = data?.records ?? [];
+  const streets = cityData?.streets ?? [];
+  const records = cityData?.records ?? [];
 
   const year = new Date().getFullYear().toString();
   const yearReview = useMemo(() => {
@@ -110,9 +110,10 @@ export function DiaryTab() {
   }
 
   function handleSave() {
-    if (!data) return;
+    if (!cityData || !activeCity) return;
     const record: ExplorationRecord = {
       id: editing?.id ?? nanoid(10),
+      cityId: activeCity.id,
       date: fDate,
       companions: fCompanions,
       streetIds: fStreetIds,
@@ -121,16 +122,15 @@ export function DiaryTab() {
       photos: fPhotos.length > 0 ? fPhotos : undefined,
     };
     const next = editing
-      ? data.records.map((r) => (r.id === record.id ? record : r))
-      : [record, ...data.records];
+      ? records.map((r) => (r.id === record.id ? record : r))
+      : [record, ...records];
     next.sort((a, b) => b.date.localeCompare(a.date));
     updateRecords(next);
     setOpen(false);
   }
 
   function handleDelete(id: string) {
-    if (!data) return;
-    updateRecords(data.records.filter((r) => r.id !== id));
+    updateRecords(records.filter((r) => r.id !== id));
   }
 
   function handlePhotoFile(file: File) {
@@ -161,7 +161,7 @@ export function DiaryTab() {
     );
   }
 
-  if (!ready || !data) {
+  if (!ready || !cityData) {
     return <TabSkeleton text="正在翻开日记本……" />;
   }
 

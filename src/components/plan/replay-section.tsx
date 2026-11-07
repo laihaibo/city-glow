@@ -11,16 +11,16 @@ import { cn } from "cn";
 
 /** 历史回放：选择一篇过往日记，在地图上叠加高亮那次走过的街巷 */
 export function ReplaySection() {
-  const { ready, data } = useCityGlow();
+  const { ready, cityData, activeCity } = useCityGlow();
   const [recordId, setRecordId] = useState<string>("");
 
-  const records = useMemo(() => data?.records ?? [], [data]);
-  const streets = useMemo(() => data?.streets ?? [], [data]);
+  const records = useMemo(() => cityData?.records ?? [], [cityData]);
+  const streets = useMemo(() => cityData?.streets ?? [], [cityData]);
 
   const selected = records.find((r) => r.id === recordId) ?? null;
   const replayIds = useMemo(() => (selected ? selected.streetIds : []), [selected]);
 
-  if (!ready || !data) {
+  if (!ready || !cityData || !activeCity) {
     return <TabSkeleton text="正在加载回放……" />;
   }
 
@@ -89,8 +89,8 @@ export function ReplaySection() {
                     streets={streets}
                     records={records}
                     home={[
-                      data.settings.homeLocation.lat,
-                      data.settings.homeLocation.lng,
+                      activeCity.homeLocation.lat,
+                      activeCity.homeLocation.lng,
                     ]}
                     mode="browse"
                     heatmap={false}
