@@ -16,6 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ThemeSwitcher } from "@/components/profile/theme-switcher";
 import { CityManager } from "@/components/profile/city-manager";
+import { AiSettingsCard } from "@/components/profile/ai-settings";
 import { useCityGlow } from "@/lib/hooks";
 import { deriveStats, BADGES } from "@/lib/achievements";
 import { downloadBackup, importBackupFile } from "@/lib/export";
@@ -105,6 +106,9 @@ export default function ProfilePage() {
           <ThemeSwitcher />
         </div>
       </GlassCard>
+
+      {/* AI 助手（可选增强） */}
+      <AiSettingsCard />
 
       {/* 成就墙 */}
       <section className="space-y-3">

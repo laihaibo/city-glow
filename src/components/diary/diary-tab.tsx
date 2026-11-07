@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import { nanoid } from "nanoid";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { GlassCard } from "@/components/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCityGlow } from "@/lib/hooks";
+import { AiConfigDialog } from "@/components/profile/ai-settings";
+import { polishDiary, AiError } from "@/lib/ai";
+import { getAiConfig } from "@/lib/storage";
 import { renderMarkdown } from "@/lib/markdown";
 import type { ExplorationRecord } from "@/lib/types";
 import { cn } from "cn";
@@ -54,6 +58,37 @@ export function DiaryTab() {
   const [fPhotos, setFPhotos] = useState<string[]>([]);
   const [customCompanion, setCustomCompanion] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  /* AI 润色日记 */
+  const [aiPolishing, setAiPolishing] = useState(false);
+  const [aiConfigOpen, setAiConfigOpen] = useState(false);
+
+  async function handleAiPolish() {
+    if (aiPolishing) return;
+    if (!getAiConfig()) {
+      setAiConfigOpen(true);
+      return;
+    }
+    if (!fInsights.trim()) {
+      toast.info("先随手写几句见闻，再让 AI 帮你整理 ✍️");
+      return;
+    }
+    setAiPolishing(true);
+    try {
+      const polished = await polishDiary({ rawNotes: fInsights, companions: fCompanions });
+      const confirmed = window.confirm(
+        "AI 润色完成，将替换当前内容（原文会丢失，可先自行复制备份）。继续吗？",
+      );
+      if (confirmed) {
+        setFInsights(polished);
+        toast.success("润色完成，可以再手动改改细节");
+      }
+    } catch (err) {
+      toast.error(err instanceof AiError ? err.message : "润色失败，请稍后重试");
+    } finally {
+      setAiPolishing(false);
+    }
+  }
 
   const streets = cityData?.streets ?? [];
   const records = cityData?.records ?? [];
@@ -360,9 +395,20 @@ export function DiaryTab() {
             </div>
 
             <div>
-              <label htmlFor="record-insights" className="text-sm font-medium">
-                见闻心得
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="record-insights" className="text-sm font-medium">
+                  见闻心得
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void handleAiPolish()}
+                  disabled={aiPolishing}
+                  className="flex min-h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
+                >
+                  <Sparkles className="size-3.5" aria-hidden />
+                  {aiPolishing ? "润色中…" : "AI 润色"}
+                </button>
+              </div>
               <Textarea
                 id="record-insights"
                 value={fInsights}
@@ -371,6 +417,9 @@ export function DiaryTab() {
                 rows={4}
                 className="mt-1.5 rounded-2xl"
               />
+              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                先随手写几句碎片见闻，「AI 润色」会整理成亲子日记；也可以不配置 AI 直接手写
+              </p>
             </div>
 
             <div>
@@ -425,6 +474,9 @@ export function DiaryTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 未配置 AI 时的引导对话框 */}
+      <AiConfigDialog open={aiConfigOpen} onOpenChange={setAiConfigOpen} />
     </div>
   );
 }

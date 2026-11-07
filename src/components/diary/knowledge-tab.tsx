@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { nanoid } from "nanoid";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { GlassCard } from "@/components/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TabSkeleton } from "@/components/diary/diary-tab";
+import { AiConfigDialog } from "@/components/profile/ai-settings";
 import { useCityGlow } from "@/lib/hooks";
+import { generateKnowledgeCard, AiError } from "@/lib/ai";
+import { getAiConfig } from "@/lib/storage";
 import { renderMarkdown } from "@/lib/markdown";
 import type { KnowledgeCard, KnowledgeCategory } from "@/lib/types";
 import { cn } from "cn";
@@ -44,6 +48,65 @@ export function KnowledgeTab() {
   const [content, setContent] = useState("");
   const [detail, setDetail] = useState<KnowledgeCard | null>(null);
   const [filter, setFilter] = useState<KnowledgeCategory | "all">("all");
+
+  /* AI 生成知识卡 */
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiConfigOpen, setAiConfigOpen] = useState(false);
+  const [aiStreet, setAiStreet] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiDraft, setAiDraft] = useState<{ title: string; content: string } | null>(null);
+  const [aiError, setAiError] = useState("");
+
+  function openAiDialog() {
+    if (!getAiConfig()) {
+      setAiConfigOpen(true);
+      return;
+    }
+    setAiStreet("");
+    setAiDraft(null);
+    setAiError("");
+    setAiOpen(true);
+  }
+
+  async function handleAiGenerate() {
+    if (!activeCity || !aiStreet.trim() || aiGenerating) return;
+    setAiGenerating(true);
+    setAiError("");
+    try {
+      const draft = await generateKnowledgeCard({
+        cityName: activeCity.name,
+        streetName: aiStreet.trim(),
+        region: streets.find((s) => s.name === aiStreet.trim())?.region,
+      });
+      setAiDraft({ title: draft.title, content: draft.content });
+    } catch (err) {
+      setAiError(
+        err instanceof AiError
+          ? err.message
+          : "生成失败，请检查网络后重试",
+      );
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
+  function handleAiSave() {
+    if (!cityData || !activeCity || !aiDraft) return;
+    const card: KnowledgeCard = {
+      id: nanoid(10),
+      cityId: activeCity.id,
+      streetId: streets.find((s) => s.name === aiStreet.trim())?.id,
+      title: aiDraft.title,
+      content: aiDraft.content,
+      category: "story",
+      createdAt: new Date().toISOString(),
+    };
+    updateKnowledge([card, ...knowledge]);
+    toast.success("知识卡片已存入卡片盒 📚");
+    setAiOpen(false);
+    setAiDraft(null);
+    setAiStreet("");
+  }
 
   const streets = cityData?.streets ?? [];
   const knowledge = cityData?.knowledge ?? [];
@@ -100,10 +163,16 @@ export function KnowledgeTab() {
 
   return (
     <div className="space-y-4">
-      <Button onClick={openNew} className="h-10 w-full rounded-2xl">
-        <Plus className="size-4" />
-        新建知识卡片
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button onClick={openNew} className="h-10 rounded-2xl">
+          <Plus className="size-4" />
+          手写卡片
+        </Button>
+        <Button onClick={openAiDialog} variant="secondary" className="h-10 rounded-2xl">
+          <Sparkles className="size-4 text-primary" />
+          AI 生成卡片
+        </Button>
+      </div>
 
       {/* 类别筛选 */}
       <div className="flex flex-wrap gap-1.5">
@@ -305,6 +374,95 @@ export function KnowledgeTab() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* AI 生成知识卡对话框 */}
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="glass-strong max-h-[85dvh] max-w-sm overflow-y-auto rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>✨ AI 生成知识卡</DialogTitle>
+            <DialogDescription>
+              输入街巷或地点名，AI 会写一张给孩子看的历史文化小卡
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {streets.length > 0 && !aiDraft && (
+              <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+                {streets.slice(0, 20).map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setAiStreet(s.name)}
+                    className={cn(
+                      "min-h-8 rounded-full px-3 text-xs font-medium transition-colors",
+                      aiStreet === s.name
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Input
+              value={aiStreet}
+              onChange={(e) => setAiStreet(e.target.value)}
+              placeholder="街巷或地点名，如：月湖"
+              className="rounded-2xl"
+              disabled={aiGenerating}
+            />
+            {aiError && (
+              <p className="rounded-2xl bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive">
+                {aiError}
+              </p>
+            )}
+            {aiGenerating && (
+              <div className="flex items-center justify-center gap-2 rounded-2xl bg-muted/50 py-6 text-sm text-muted-foreground">
+                <Sparkles className="size-4 animate-pulse text-primary" aria-hidden />
+                AI 正在写卡片……
+              </div>
+            )}
+            {aiDraft && (
+              <div className="space-y-2 rounded-2xl bg-muted/50 p-3">
+                <p className="text-sm font-semibold">{aiDraft.title}</p>
+                <div
+                  className="md-body max-h-56 overflow-y-auto text-xs text-muted-foreground"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(aiDraft.content) }}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            {aiDraft ? (
+              <>
+                <Button variant="ghost" onClick={() => setAiDraft(null)} className="rounded-2xl">
+                  重写一张
+                </Button>
+                <Button onClick={handleAiSave} className="rounded-2xl">
+                  存入卡片盒
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => setAiOpen(false)} className="rounded-2xl">
+                  取消
+                </Button>
+                <Button
+                  onClick={() => void handleAiGenerate()}
+                  disabled={!aiStreet.trim() || aiGenerating}
+                  className="rounded-2xl"
+                >
+                  <Sparkles className="size-4" />
+                  {aiGenerating ? "生成中…" : "生成"}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 未配置 AI 时的引导对话框 */}
+      <AiConfigDialog open={aiConfigOpen} onOpenChange={setAiConfigOpen} />
     </div>
   );
 }

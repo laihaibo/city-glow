@@ -26,6 +26,7 @@ export const STORAGE_KEYS = {
  * 换设备后需重新填写（备份文件刻意不含 Key，避免扩散）。
  */
 export const TIANDITU_KEY_STORAGE = `${PREFIX}.tiandituKey`;
+export const AI_STORAGE = `${PREFIX}.ai`;
 
 /** SSR / 首次渲染前不存在 localStorage */
 function isBrowser(): boolean {
@@ -292,4 +293,45 @@ export function getTiandituKey(): string {
 /** 保存天地图 API Key（自动去首尾空白） */
 export function saveTiandituKey(key: string): void {
   writeRaw(TIANDITU_KEY_STORAGE, key.trim());
+}
+
+/* ---------- AI 助手配置（可选增强，见 AI_STORAGE 注释） ---------- */
+
+/** AI 服务配置：任意 OpenAI 兼容接口（智谱 / DeepSeek / 硅基流动 / OpenRouter…） */
+export interface AiConfig {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
+/**
+ * AI 配置默认值。经实测（2026-11）：DeepSeek / 硅基流动 / OpenRouter 的
+ * preflight 带 CORS 头，支持浏览器直连；智谱 open.bigmodel.cn 的 preflight
+ * 不返回 CORS 头，浏览器直连会失败，需改用中转地址。
+ */
+export const AI_DEFAULTS = {
+  baseUrl: "https://api.deepseek.com",
+  model: "deepseek-chat",
+} as const;
+
+/** 读取 AI 配置；未配置或 apiKey 为空时返回 null */
+export function getAiConfig(): AiConfig | null {
+  const raw = readRaw(AI_STORAGE);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<AiConfig>;
+    if (!parsed.apiKey?.trim()) return null;
+    return {
+      baseUrl: parsed.baseUrl?.trim() || AI_DEFAULTS.baseUrl,
+      apiKey: parsed.apiKey.trim(),
+      model: parsed.model?.trim() || AI_DEFAULTS.model,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 保存 AI 配置（保留空字段走默认值） */
+export function saveAiConfig(config: Partial<AiConfig>): void {
+  writeRaw(AI_STORAGE, JSON.stringify(config));
 }
