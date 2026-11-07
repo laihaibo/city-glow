@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DiaryTab } from "@/components/diary/diary-tab";
 import { KnowledgeTab } from "@/components/diary/knowledge-tab";
 
 export default function DiaryPage() {
   const [tab, setTab] = useState("diary");
+
+  // 支持首页快速入口的 ?tab=knowledge 直达知识卡片
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("tab");
+    if (param === "knowledge" || param === "diary") setTab(param);
+  }, []);
 
   return (
     <div className="space-y-4">

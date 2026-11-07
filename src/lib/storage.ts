@@ -67,7 +67,8 @@ function readSlice<T>(key: string, validate: (value: unknown) => T | null, fallb
 
 /**
  * 读取全部数据（各分片缺失时用默认值补齐）。
- * Phase 2 起在地图/日记等模块挂载时调用。
+ * 读取时自动执行版本迁移：检测到旧版本数据立即升级并落盘，
+ * 保证 Context 装载的永远是最新结构。
  */
 export function loadAllData(): CityGlowData {
   const settings = readSlice(
@@ -87,7 +88,7 @@ export function loadAllData(): CityGlowData {
   );
   const knowledge = readSlice(
     STORAGE_KEYS.knowledge,
-    (value) => (isKnowledgeArray(value) ? value : null),
+    (signal) => (isKnowledgeArray(signal) ? signal : null),
     DEFAULT_DATA.knowledge,
   );
   const achievements = readSlice(
@@ -95,7 +96,13 @@ export function loadAllData(): CityGlowData {
     (value) => (isAchievements(value) ? value : null),
     DEFAULT_DATA.achievements,
   );
-  return { settings, streets, records, knowledge, achievements };
+  const data: CityGlowData = { settings, streets, records, knowledge, achievements };
+  const migrated = migrateData(data);
+  if (migrated.settings.schemaVersion !== data.settings.schemaVersion) {
+    // 版本升级：立即落盘，避免每次读取都重复迁移
+    saveAllData(migrated);
+  }
+  return migrated;
 }
 
 function isSettings(value: unknown): value is CityGlowData["settings"] {
@@ -285,14 +292,23 @@ export function estimateStorageBytes(): number {
 
 /* ---------- 外部服务 Key（独立于主数据，见 TIANDITU_KEY_STORAGE 注释） ---------- */
 
+const tiandituKeyListeners = new Set<() => void>();
+
+/** 订阅天地图 Key 变化（同页面内的保存即时通知所有消费者） */
+export function subscribeTiandituKey(listener: () => void): () => void {
+  tiandituKeyListeners.add(listener);
+  return () => tiandituKeyListeners.delete(listener);
+}
+
 /** 读取天地图 API Key；未配置或全空白时返回空串 */
 export function getTiandituKey(): string {
   return readRaw(TIANDITU_KEY_STORAGE)?.trim() ?? "";
 }
 
-/** 保存天地图 API Key（自动去首尾空白） */
+/** 保存天地图 API Key（自动去首尾空白）并通知订阅者 */
 export function saveTiandituKey(key: string): void {
   writeRaw(TIANDITU_KEY_STORAGE, key.trim());
+  tiandituKeyListeners.forEach((listener) => listener());
 }
 
 /* ---------- AI 助手配置（可选增强，见 AI_STORAGE 注释） ---------- */
