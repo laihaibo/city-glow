@@ -14,6 +14,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { ExplorationRecord, Street } from "@/lib/types";
+import { useTiandituKey } from "@/lib/use-map-key";
 
 /** 街巷状态 → 糖果色（与 globals.css 的 chart 令牌保持一致观感） */
 export const STREET_COLORS: Record<Street["status"], string> = {
@@ -235,6 +236,7 @@ export default function CityMap({
   goHomeSignal,
 }: CityMapProps) {
   const replaySet = useMemo(() => new Set(replayStreetIds ?? []), [replayStreetIds]);
+  const { key: tiandituKey } = useTiandituKey();
 
   const handleDrawClick = (p: [number, number]) => {
     onDrawPathChange([...drawPath, p]);
@@ -245,12 +247,24 @@ export default function CityMap({
       center={home}
       zoom={15}
       className="h-full w-full"
-      attributionControl={false}
     >
-      <TileLayer
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      />
+      {/* 天地图：vec_w 底图 + cia_w 中文注记双层（_w 系列 Web 墨卡托，与现有 [lat,lng] 数据直接兼容）。
+          无 Key 时不渲染底图，线稿模式下街巷线/热力图照常可用 */}
+      {tiandituKey && (
+        <>
+          <TileLayer
+            url={`https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${tiandituKey}`}
+            subdomains={["0", "1", "2", "3", "4", "5", "6", "7"]}
+            attribution='<a href="https://www.tianditu.gov.cn/" target="_blank" rel="noreferrer">&copy; 天地图</a>'
+            maxZoom={18}
+          />
+          <TileLayer
+            url={`https://t{s}.tianditu.gov.cn/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=${tiandituKey}`}
+            subdomains={["0", "1", "2", "3", "4", "5", "6", "7"]}
+            maxZoom={18}
+          />
+        </>
+      )}
       <ViewportController
         streets={streets}
         home={home}

@@ -166,6 +166,13 @@
 .dark .leaflet-container {
   background: hsl(258 25% 14%);
 }
+/* 署名控件融入玻璃风（天地图 ODbL 署名要求） */
+.leaflet-control-attribution {
+  border-radius: 0.75rem 0 0 0;
+  background: color-mix(in srgb, canvas 72%, transparent);
+  backdrop-filter: blur(8px);
+  font-size: 10px;
+}
 
 /* ---------- Markdown 渲染样式（日记/知识卡正文） ---------- */
 .md-body p {

@@ -21,6 +21,12 @@ export const STORAGE_KEYS = {
   achievements: `${PREFIX}.achievements`,
 } as const;
 
+/**
+ * 外部服务 Key 的独立分片：不属于主数据，不进备份、不随清空重置。
+ * 换设备后需重新填写（备份文件刻意不含 Key，避免扩散）。
+ */
+export const TIANDITU_KEY_STORAGE = `${PREFIX}.tiandituKey`;
+
 /** SSR / 首次渲染前不存在 localStorage */
 function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
@@ -236,4 +242,16 @@ export function estimateStorageBytes(): number {
     total += key.length + (readRaw(key)?.length ?? 0);
   }
   return total * 2; // UTF-16 每字符 2 字节
+}
+
+/* ---------- 外部服务 Key（独立于主数据，见 TIANDITU_KEY_STORAGE 注释） ---------- */
+
+/** 读取天地图 API Key；未配置或全空白时返回空串 */
+export function getTiandituKey(): string {
+  return readRaw(TIANDITU_KEY_STORAGE)?.trim() ?? "";
+}
+
+/** 保存天地图 API Key（自动去首尾空白） */
+export function saveTiandituKey(key: string): void {
+  writeRaw(TIANDITU_KEY_STORAGE, key.trim());
 }

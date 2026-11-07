@@ -34,6 +34,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCityGlow } from "@/lib/hooks";
+import { useTiandituKey } from "@/lib/use-map-key";
 import { pathLengthKm } from "@/lib/geo";
 import type { Street, StreetStatus } from "@/lib/types";
 import { cn } from "cn";
@@ -52,6 +53,7 @@ const STATUS_STYLE: Record<StreetStatus, string> = {
 
 export default function MapPage() {
   const { ready, data, updateStreets } = useCityGlow();
+  const { key: tiandituKey, saveKey } = useTiandituKey();
   const [mode, setMode] = useState<MapMode>("browse");
   const [heatmap, setHeatmap] = useState(false);
   const [drawPath, setDrawPath] = useState<[number, number][]>([]);
@@ -59,6 +61,8 @@ export default function MapPage() {
   const [regionSheetOpen, setRegionSheetOpen] = useState(false);
   const [fitAllSignal, setFitAllSignal] = useState(0);
   const [goHomeSignal, setGoHomeSignal] = useState(0);
+  const [keyDialogOpen, setKeyDialogOpen] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
 
   // 新街巷表单
   const [name, setName] = useState("");
@@ -167,6 +171,28 @@ export default function MapPage() {
           </GlassCard>
         ))}
       </div>
+
+      {/* 底图 Key 引导：未配置天地图 Key 时地图为线稿模式（街巷线照常显示） */}
+      {!tiandituKey && (
+        <GlassCard className="flex items-center gap-3 border-dashed p-3">
+          <span className="text-lg" aria-hidden>🗺️</span>
+          <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
+            底图未配置：现在显示的是线稿模式，画街巷、热力图照常可用。
+            填入免费的天地图 Key 即可看到真实地图。
+          </p>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="shrink-0 rounded-xl"
+            onClick={() => {
+              setKeyInput("");
+              setKeyDialogOpen(true);
+            }}
+          >
+            配置 Key
+          </Button>
+        </GlassCard>
+      )}
 
       {/* 地图画布 */}
       <GlassCard className="relative overflow-hidden p-1.5">
@@ -408,6 +434,59 @@ export default function MapPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* 天地图 Key 配置对话框 */}
+      <Dialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen}>
+        <DialogContent className="glass-strong max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>配置天地图 Key</DialogTitle>
+            <DialogDescription>
+              底图来自国家天地图服务，需要（免费的）Key 才能显示。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              placeholder="粘贴天地图 Key（32 位字母数字）"
+              className="rounded-2xl font-mono"
+              autoFocus
+            />
+            <div className="space-y-1.5 rounded-2xl bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
+              <p>
+                1. 访问{" "}
+                <a
+                  href="https://console.tianditu.gov.cn/api/key"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-primary underline underline-offset-2"
+                >
+                  天地图控制台
+                </a>{" "}
+                注册并「创建应用」，类型选 <b>浏览器端</b>
+              </p>
+              <p>2. 复制 Key 粘贴到上方，仅保存在本机浏览器，不会上传</p>
+              <p>3. 填了 Key 底图仍不显示？检查应用类型是否为浏览器端，或在天地图后台把域名绑定到 laihaibo.github.io</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setKeyDialogOpen(false)} className="rounded-2xl">
+              取消
+            </Button>
+            <Button
+              onClick={() => {
+                if (!keyInput.trim()) return;
+                saveKey(keyInput);
+                setKeyDialogOpen(false);
+              }}
+              disabled={!keyInput.trim()}
+              className="rounded-2xl"
+            >
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
