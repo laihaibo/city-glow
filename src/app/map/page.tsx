@@ -338,7 +338,7 @@ export default function MapPage() {
               <Input
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                placeholder="选上方或输入新区域，如：海曙老城"
+                placeholder="选上方或输入新区域"
                 className="mt-2 rounded-2xl"
               />
             </div>

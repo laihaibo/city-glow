@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s · City Glow",
   },
   description:
-    "带孩子用脚步丈量宁波：标注街巷、记录见闻、点亮城区，把周末散碎时间变成可以十年回看的成长档案。",
+    "带孩子用脚步丈量每一座去过、住过、爱着的城市：标注街巷、记录见闻、点亮城区，把周末散碎时间变成可以十年回看的成长档案。",
   applicationName: "City Glow",
   appleWebApp: {
     capable: true,
