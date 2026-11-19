@@ -18,14 +18,7 @@ import type {
   Street,
 } from "@/lib/types";
 import { nanoid } from "nanoid";
-import {
-  loadAllData,
-  saveAchievements,
-  saveKnowledge,
-  saveRecords,
-  saveSettings,
-  saveStreets,
-} from "@/lib/storage";
+import { loadAllData, saveAllData } from "@/lib/storage";
 import { evaluateAchievements } from "@/lib/achievements";
 
 export interface NewlyUnlocked {
@@ -103,7 +96,7 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
       fresh.length > 0 ||
       JSON.stringify(result.stats) !== JSON.stringify(next.achievements.stats)
     ) {
-      saveAchievements(achievements);
+      saveAllData({ ...next, achievements });
     }
     return { ...next, achievements };
   }, []);
@@ -125,8 +118,7 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           streets: [...scoped, ...prev.streets.filter((s) => s.cityId !== cityId)],
         });
-        saveStreets(next.streets);
-        saveAchievements(next.achievements);
+        saveAllData(next);
         return next;
       });
     },
@@ -143,8 +135,7 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           records: [...scoped, ...prev.records.filter((r) => r.cityId !== cityId)],
         });
-        saveRecords(next.records);
-        saveAchievements(next.achievements);
+        saveAllData(next);
         return next;
       });
     },
@@ -161,8 +152,7 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           knowledge: [...scoped, ...prev.knowledge.filter((k) => k.cityId !== cityId)],
         });
-        saveKnowledge(next.knowledge);
-        saveAchievements(next.achievements);
+        saveAllData(next);
         return next;
       });
     },
@@ -174,7 +164,7 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
       setData((prev) => {
         if (!prev) return prev;
         const settings = { ...prev.settings, ...patch };
-        saveSettings(settings);
+        saveAllData({ ...prev, settings });
         return { ...prev, settings };
       });
     },
@@ -203,7 +193,7 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
           cities: [...prev.settings.cities, city],
           activeCityId: city.id,
         };
-        saveSettings(settings);
+        saveAllData({ ...prev, settings });
         return { ...prev, settings };
       });
       return city;
@@ -216,12 +206,12 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
       if (!prev) return prev;
       const trimmed = name.trim();
       if (!trimmed) return prev;
-      const settings = {
-        ...prev.settings,
-        cities: prev.settings.cities.map((c) => (c.id === id ? { ...c, name: trimmed } : c)),
-      };
-      saveSettings(settings);
-      return { ...prev, settings };
+        const settings = {
+          ...prev.settings,
+          cities: prev.settings.cities.map((c) => (c.id === id ? { ...c, name: trimmed } : c)),
+        };
+        saveAllData({ ...prev, settings });
+        return { ...prev, settings };
     });
   }, []);
 
@@ -241,11 +231,7 @@ export function CityGlowProvider({ children }: { children: React.ReactNode }) {
         const records = prev.records.filter((r) => r.cityId !== id);
         const knowledge = prev.knowledge.filter((k) => k.cityId !== id);
         const next = recomputeAchievements({ ...prev, settings, streets, records, knowledge });
-        saveSettings(settings);
-        saveStreets(streets);
-        saveRecords(records);
-        saveKnowledge(knowledge);
-        saveAchievements(next.achievements);
+        saveAllData(next);
         return next;
       });
     },

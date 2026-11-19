@@ -1,7 +1,10 @@
 /**
- * 地理计算工具：街巷长度、距离、周末路线的最近邻串联。
+ * 地理计算工具：街巷长度、距离、周末路线的最近邻串联、关键点派生。
  * 坐标一律 [lat, lng]（leaflet 顺序），注意与常用 lng-lat 顺序区分。
  */
+
+import { nanoid } from "nanoid";
+import type { StreetWaypoint } from "@/lib/types";
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -33,6 +36,34 @@ export function pathCenter(path: [number, number][]): [number, number] | null {
   const lat = path.reduce((sum, p) => sum + p[0], 0) / path.length;
   const lng = path.reduce((sum, p) => sum + p[1], 0) / path.length;
   return [lat, lng];
+}
+
+/**
+ * 从路径派生关键点：首点=起点、末点=终点、中间点=转弯点。
+ * 修路导致路径变化时，凭这些结构化关键点即可对照旧线重新描画。
+ */
+export function deriveWaypoints(path: [number, number][]): StreetWaypoint[] {
+  if (path.length === 0) return [];
+  const point = (kind: StreetWaypoint["kind"], p: [number, number]): StreetWaypoint => ({
+    id: nanoid(6),
+    kind,
+    lat: p[0],
+    lng: p[1],
+  });
+  if (path.length === 1) return [point("start", path[0])];
+  return [
+    point("start", path[0]),
+    ...path.slice(1, -1).map((p) => point("turn", p)),
+    point("end", path[path.length - 1]),
+  ];
+}
+
+/** 关键点的展示名：自定义名优先，缺省为「起点/转点N/终点」 */
+export function waypointLabel(wp: StreetWaypoint, index: number): string {
+  if (wp.name?.trim()) return wp.name.trim();
+  if (wp.kind === "start") return "起点";
+  if (wp.kind === "end") return "终点";
+  return `转点${index}`;
 }
 
 export interface RouteStop {

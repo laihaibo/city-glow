@@ -6,6 +6,7 @@ import L from "leaflet";
 import { useEffect, useMemo } from "react";
 import {
   CircleMarker,
+  Marker,
   MapContainer,
   Polyline,
   Popup,
@@ -13,7 +14,9 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import type { ExplorationRecord, Street } from "@/lib/types";
+import { pathCenter, waypointLabel } from "@/lib/geo";
+import { renderMarkdown } from "@/lib/markdown";
+import type { ExplorationRecord, KnowledgeCard, KnowledgeCategory, Street } from "@/lib/types";
 import { useTiandituKey } from "@/lib/use-map-key";
 
 /** 街巷状态 → 糖果色（与 globals.css 的 chart 令牌保持一致观感） */
@@ -26,11 +29,33 @@ export const STREET_COLORS: Record<Street["status"], string> = {
 const REPLAY_COLOR = "#38bdf8"; // 历史回放高亮（天空蓝）
 const DRAW_PREVIEW_COLOR = "#f0489c";
 
+const CATEGORY_LABEL: Record<KnowledgeCategory, string> = {
+  story: "📖 街巷故事",
+  district: "🏙️ 商圈对比",
+  geology: "🌊 地理变迁",
+  zone: "🏭 分区认知",
+  relic: "🏺 文物古迹",
+  other: "✨ 其他",
+};
+
 export type MapMode = "browse" | "draw";
+
+/** 知识卡片的地图标记：白色圆角小牌 + 标签 emoji */
+const KNOWLEDGE_ICON = L.divIcon({
+  className: "knowledge-marker",
+  html: '<span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9999px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);border:2px solid #f0489c;font-size:14px;line-height:1;">🏷️</span>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+  popupAnchor: [0, -26],
+});
 
 export interface CityMapProps {
   streets: Street[];
   records: ExplorationRecord[];
+  /** 知识卡片：有关联位置（自定义落点或关联街巷）的卡片会显示为可点击标记 */
+  knowledge?: KnowledgeCard[];
+  /** 是否显示知识卡片图层（浏览模式） */
+  showKnowledge?: boolean;
   /** [lat, lng] 家的位置 */
   home: [number, number];
   mode: MapMode;
@@ -44,6 +69,8 @@ export interface CityMapProps {
   fitAllSignal: number;
   /** 递增信号：触发飞回家 */
   goHomeSignal: number;
+  /** 街巷弹窗里的「重新描画」回调（修路后更新路径） */
+  onRedrawStreet?: (street: Street) => void;
 }
 
 /* ---------- 内部控制器们 ---------- */
@@ -178,20 +205,32 @@ function HeatmapLayer({ streets, visible }: { streets: Street[]; visible: boolea
   return null;
 }
 
-/* ---------- 弹窗内容：已走街巷的探索记录卡 ---------- */
+/* ---------- 弹窗内容 ---------- */
 
+/** 知识卡片的位置：自定义落点优先，否则取关联街巷的路径中心 */
+function cardPosition(card: KnowledgeCard, streets: Street[]): [number, number] | null {
+  if (card.location) return [card.location.lat, card.location.lng];
+  const street = streets.find((s) => s.id === card.streetId);
+  if (!street) return null;
+  return pathCenter(street.path);
+}
+
+/** 已走街巷的探索记录卡 + 关键点路线 */
 function StreetPopup({
   street,
   records,
+  onRedraw,
 }: {
   street: Street;
   records: ExplorationRecord[];
+  onRedraw?: (street: Street) => void;
 }) {
   const related = records
     .filter((r) => r.streetIds.includes(street.id))
     .sort((a, b) => b.date.localeCompare(a.date));
   const companions = [...new Set(related.flatMap((r) => r.companions))];
   const latest = related[0];
+  const namedWaypoints = (street.waypoints ?? []).some((wp) => wp.name?.trim());
 
   return (
     <div className="min-w-44 space-y-1.5 p-1 text-sm">
@@ -202,6 +241,14 @@ function StreetPopup({
       {street.lastWalkedAt && (
         <p className="text-xs text-muted-foreground">
           最近走过：{street.lastWalkedAt.slice(0, 10)} · {street.lengthKm} km
+        </p>
+      )}
+      {namedWaypoints && (
+        <p className="text-xs leading-relaxed">
+          🚩{" "}
+          {(street.waypoints ?? [])
+            .map((wp, i) => waypointLabel(wp, i))
+            .join(" → ")}
         </p>
       )}
       {companions.length > 0 && (
@@ -217,6 +264,33 @@ function StreetPopup({
         <p className="text-xs text-muted-foreground">共有 {related.length} 条相关日记</p>
       )}
       {!latest && <p className="text-xs text-muted-foreground">还没有日记记录</p>}
+      {onRedraw && (
+        <button
+          type="button"
+          onClick={() => onRedraw(street)}
+          className="mt-1 min-h-7 rounded-full bg-muted px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+        >
+          ✏️ 重新描画路径
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** 知识卡片的地图弹窗 */
+function KnowledgePopup({ card, streets }: { card: KnowledgeCard; streets: Street[] }) {
+  const streetName = streets.find((s) => s.id === card.streetId)?.name;
+  return (
+    <div className="max-w-64 space-y-1.5 p-1">
+      <p className="text-xs font-medium text-muted-foreground">
+        {CATEGORY_LABEL[card.category]} · {card.createdAt.slice(0, 10)}
+      </p>
+      <p className="text-sm font-semibold">{card.title}</p>
+      <div
+        className="md-body max-h-40 overflow-y-auto text-xs leading-relaxed text-muted-foreground"
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(card.content, { compact: true }) }}
+      />
+      {streetName && <p className="text-xs text-chart-1">📍 {streetName}</p>}
     </div>
   );
 }
@@ -226,6 +300,8 @@ function StreetPopup({
 export default function CityMap({
   streets,
   records,
+  knowledge = [],
+  showKnowledge = false,
   home,
   mode,
   heatmap,
@@ -234,6 +310,7 @@ export default function CityMap({
   replayStreetIds,
   fitAllSignal,
   goHomeSignal,
+  onRedrawStreet,
 }: CityMapProps) {
   const replaySet = useMemo(() => new Set(replayStreetIds ?? []), [replayStreetIds]);
   const { key: tiandituKey } = useTiandituKey();
@@ -241,6 +318,16 @@ export default function CityMap({
   const handleDrawClick = (p: [number, number]) => {
     onDrawPathChange([...drawPath, p]);
   };
+
+  const locatedCards = useMemo(
+    () =>
+      showKnowledge && mode === "browse"
+        ? knowledge
+            .map((card) => ({ card, position: cardPosition(card, streets) }))
+            .filter((c): c is { card: KnowledgeCard; position: [number, number] } => c.position !== null)
+        : [],
+    [showKnowledge, mode, knowledge, streets],
+  );
 
   return (
     <MapContainer
@@ -270,6 +357,7 @@ export default function CityMap({
         home={home}
         fitAllSignal={fitAllSignal}
         goHomeSignal={goHomeSignal}
+        replayStreetIds={replayStreetIds}
       />
       <DrawClickHandler enabled={mode === "draw"} onPoint={handleDrawClick} />
       <HeatmapLayer streets={streets} visible={heatmap} />
@@ -304,12 +392,21 @@ export default function CityMap({
           >
             {street.status !== "todo" && mode !== "draw" && (
               <Popup maxWidth={280}>
-                <StreetPopup street={street} records={records} />
+                <StreetPopup street={street} records={records} onRedraw={onRedrawStreet} />
               </Popup>
             )}
           </Polyline>
         );
       })}
+
+      {/* 知识卡片标记（浏览模式 + 图层开启时） */}
+      {locatedCards.map(({ card, position }) => (
+        <Marker key={card.id} position={position} icon={KNOWLEDGE_ICON}>
+          <Popup maxWidth={280}>
+            <KnowledgePopup card={card} streets={streets} />
+          </Popup>
+        </Marker>
+      ))}
 
       {/* 绘制预览：已落点连线 + 各点圆标 */}
       {drawPath.length > 0 && (

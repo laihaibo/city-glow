@@ -1,44 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DiaryTab } from "@/components/diary/diary-tab";
-import { KnowledgeTab } from "@/components/diary/knowledge-tab";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function DiaryPage() {
-  const [tab, setTab] = useState("diary");
+/** 旧版 /diary 页 → /archive?tab=diary（知识卡片 ?tab=knowledge 亦保留），保住已发出的旧链接 */
+export default function DiaryRedirectPage() {
+  const router = useRouter();
 
-  // 支持首页快速入口的 ?tab=knowledge 直达知识卡片
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("tab");
-    if (param === "knowledge" || param === "diary") setTab(param);
-  }, []);
+    const target = param === "knowledge" ? "/archive?tab=knowledge" : "/archive?tab=diary";
+    router.replace(target);
+  }, [router]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">探索日记</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          每次出走都值得记下，时间线会攒成孩子的成长档案
-        </p>
-      </div>
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="glass grid w-full grid-cols-2 rounded-2xl">
-          <TabsTrigger value="diary" className="rounded-xl">
-            📝 日记
-          </TabsTrigger>
-          <TabsTrigger value="knowledge" className="rounded-xl">
-            🏷️ 知识卡片
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="diary" className="mt-4">
-          <DiaryTab />
-        </TabsContent>
-        <TabsContent value="knowledge" className="mt-4">
-          <KnowledgeTab />
-        </TabsContent>
-      </Tabs>
+    <div className="glass flex h-[50dvh] items-center justify-center rounded-3xl">
+      <p className="animate-pulse text-sm text-muted-foreground">日记已搬进「足迹」，正在跳转……</p>
     </div>
   );
 }

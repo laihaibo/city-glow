@@ -1,17 +1,17 @@
-import { Home, Map, NotebookPen, Route, UserRound, type LucideIcon } from "lucide-react";
+import { Footprints, Map, UserRound, type LucideIcon } from "lucide-react";
 
-/** 五个主导航出口，底部导航与桌面导航共用 */
+/** 三个主导航出口，底部导航与桌面导航共用 */
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** 中间主出口（首页=地图）：底栏放大凸起显示 */
+  center?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "首页", icon: Home },
-  { href: "/map", label: "地图", icon: Map },
-  { href: "/diary", label: "日记", icon: NotebookPen },
-  { href: "/plan", label: "计划", icon: Route },
+  { href: "/archive", label: "足迹", icon: Footprints },
+  { href: "/", label: "首页", icon: Map, center: true },
   { href: "/profile", label: "我的", icon: UserRound },
 ];
 

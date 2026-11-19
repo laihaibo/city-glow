@@ -1,162 +1,269 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo } from "react";
-import { ChevronRight, Footprints, MapPinned, NotebookPen, Route, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Flame,
+  Home,
+  ListChecks,
+  Maximize2,
+  Pencil,
+  Tags,
+} from "lucide-react";
+import { toast } from "sonner";
+import { CityMapDynamic } from "@/components/map";
+import type { MapMode } from "@/components/map/city-map";
+import { SaveStreetDialog } from "@/components/map/save-street-dialog";
+import { DrawToolbar } from "@/components/map/draw-toolbar";
+import { RegionSheet } from "@/components/map/region-sheet";
+import { TiandituKeyHint } from "@/components/map/tianditu-key-card";
 import { GlassCard } from "@/components/glass/glass-card";
-import { Badge } from "@/components/ui/badge";
-import { TabSkeleton } from "@/components/diary/diary-tab";
 import { CitySwitcher } from "@/components/city/city-switcher";
 import { useCityGlow } from "@/lib/hooks";
+import { pathLengthKm } from "@/lib/geo";
+import type { Street, StreetStatus } from "@/lib/types";
+import { cn } from "cn";
 
+/**
+ * 首页 = 地图。打开应用直接看到点亮成果：
+ * 顶部悬浮城市/统计条，右下工具簇，左下「画街巷」主入口。
+ */
 export default function HomePage() {
-  const { ready, data, cityData, activeCity } = useCityGlow();
+  const { ready, data, cityData, activeCity, updateStreets } = useCityGlow();
+  const [mode, setMode] = useState<MapMode>("browse");
+  const [heatmap, setHeatmap] = useState(false);
+  const [showKnowledge, setShowKnowledge] = useState(true);
+  const [drawPath, setDrawPath] = useState<[number, number][]>([]);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [editingStreet, setEditingStreet] = useState<Street | null>(null);
+  const [regionSheetOpen, setRegionSheetOpen] = useState(false);
+  const [fitAllSignal, setFitAllSignal] = useState(0);
+  const [goHomeSignal, setGoHomeSignal] = useState(0);
+
+  const streets = useMemo(() => cityData?.streets ?? [], [cityData]);
+  const records = useMemo(() => cityData?.records ?? [], [cityData]);
+  const knowledge = useMemo(() => cityData?.knowledge ?? [], [cityData]);
+  const regions = useMemo(
+    () => [...new Set(streets.map((s) => s.region))].sort(),
+    [streets],
+  );
 
   const stats = useMemo(() => {
-    if (!cityData) return null;
-    const done = cityData.streets.filter((s) => s.status === "done");
-    const regions = [...new Set(cityData.streets.map((s) => s.region))];
-    const litRegions = new Set(done.map((s) => s.region));
+    const done = streets.filter((s) => s.status === "done");
+    const doneRegions = new Set(done.map((s) => s.region));
     return {
       doneCount: done.length,
       totalKm: done.reduce((sum, s) => sum + s.lengthKm, 0),
-      coverage: regions.length > 0 ? Math.round((litRegions.size / regions.length) * 100) : 0,
-      explorations: cityData.records.length,
-      recent: [...done]
-        .filter((s) => s.lastWalkedAt)
-        .sort((a, b) => (b.lastWalkedAt ?? "").localeCompare(a.lastWalkedAt ?? ""))
-        .slice(0, 5),
+      coverage: regions.length > 0 ? Math.round((doneRegions.size / regions.length) * 100) : 0,
     };
-  }, [cityData]);
+  }, [streets, regions]);
 
-  if (!ready || !cityData || !stats) {
-    return <TabSkeleton text="正在点亮城市……" />;
+  const drawKm = drawPath.length >= 2 ? pathLengthKm(drawPath) : 0;
+
+  const resetDraw = () => {
+    setDrawPath([]);
+    setEditingStreet(null);
+    setMode("browse");
+  };
+
+  const startDraw = () => {
+    setEditingStreet(null);
+    setDrawPath([]);
+    setMode("draw");
+  };
+
+  /** 修路改道：重新描画已有街巷，保存后覆盖旧路径 */
+  const handleRedraw = (street: Street) => {
+    setEditingStreet(street);
+    setDrawPath(street.path);
+    setMode("draw");
+  };
+
+  const handleSaveStreet = (street: Street) => {
+    if (!cityData) return;
+    if (editingStreet) {
+      updateStreets(cityData.streets.map((s) => (s.id === street.id ? street : s)));
+      toast.success(`「${street.name}」路径已更新 🎉`);
+    } else {
+      updateStreets([street, ...cityData.streets]);
+      toast.success(`「${street.name}」已点亮 ✨`);
+    }
+    setSaveOpen(false);
+    resetDraw();
+  };
+
+  /** 区域勾选：点击街巷行在 已走 ↔ 待走 间切换 */
+  const toggleStreetStatus = (street: Street) => {
+    if (!cityData) return;
+    const nextStatus: StreetStatus = street.status === "done" ? "todo" : "done";
+    updateStreets(
+      streets.map((s) =>
+        s.id === street.id
+          ? {
+              ...s,
+              status: nextStatus,
+              lastWalkedAt: nextStatus === "done" ? new Date().toISOString().slice(0, 10) : undefined,
+            }
+          : s,
+      ),
+    );
+  };
+
+  if (!ready || !data || !cityData || !activeCity) {
+    return (
+      <div className="glass flex h-[60dvh] items-center justify-center rounded-3xl">
+        <p className="animate-pulse text-sm text-muted-foreground">正在点亮城市……</p>
+      </div>
+    );
   }
 
-  const hasAnyData = cityData.streets.length > 0 || cityData.records.length > 0;
-
   return (
-    <div className="space-y-5">
-      {/* 品牌英雄区 */}
-      <GlassCard className="overflow-hidden bg-gradient-to-br from-primary/16 via-primary/6 to-transparent p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Sparkles className="size-4 shrink-0 text-primary" aria-hidden />
-            周末亲子探索
-          </div>
+    <div className="-mx-4 -mt-6">
+      <div className="relative h-[calc(100dvh-96px-env(safe-area-inset-bottom))] overflow-hidden lg:h-[calc(100dvh-8.5rem)] lg:rounded-3xl">
+        <CityMapDynamic
+          streets={streets}
+          records={records}
+          knowledge={knowledge}
+          showKnowledge={showKnowledge}
+          home={[activeCity.homeLocation.lat, activeCity.homeLocation.lng]}
+          mode={mode}
+          heatmap={heatmap}
+          drawPath={drawPath}
+          onDrawPathChange={setDrawPath}
+          fitAllSignal={fitAllSignal}
+          goHomeSignal={goHomeSignal}
+          onRedrawStreet={handleRedraw}
+        />
+
+        {/* 顶部悬浮条：城市切换 + 浓缩统计 */}
+        <div className="absolute inset-x-3 top-3 z-[1000] flex items-center gap-2">
           <CitySwitcher />
-        </div>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight">
-          点亮{activeCity?.name ?? "城市"}之光
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          从家门口出发，把走过的每条街划线点亮。走过几百条街巷，孩子自会发现认识一座城市的范式。
-        </p>
-        <div className="mt-4 flex gap-3">
-          <Link
-            href="/map"
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
-          >
-            <Footprints className="size-4" aria-hidden />
-            {stats.doneCount === 0 ? "开始探索" : "继续探索"}
-          </Link>
-          <Link
-            href="/diary"
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-white/40 bg-white/40 px-4 text-sm font-semibold transition-transform active:scale-[0.98] dark:bg-white/10"
-          >
-            <NotebookPen className="size-4" aria-hidden />
-            记一笔
-          </Link>
-        </div>
-      </GlassCard>
-
-      {/* 统计卡片（真实数据） */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">探索足迹</h2>
-          {hasAnyData && (
-            <Badge variant="secondary" className="rounded-full text-xs">
-              {activeCity?.name}
-            </Badge>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: "累计街巷", value: `${stats.doneCount}`, unit: "条" },
-            { label: "总里程", value: stats.totalKm.toFixed(1), unit: "km" },
-            { label: "区域覆盖率", value: `${stats.coverage}`, unit: "%" },
-            { label: "探索次数", value: `${stats.explorations}`, unit: "次" },
-          ].map(({ label, value, unit }) => (
-            <GlassCard key={label} className="p-4">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="mt-1.5 font-mono text-2xl font-bold tracking-tight tabular-nums">
-                {value}
-                <span className="ml-1 text-xs font-normal text-muted-foreground">{unit}</span>
-              </p>
-            </GlassCard>
-          ))}
-        </div>
-      </section>
-
-      {/* 快速入口 */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">快速开始</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {[
-            { href: "/map", title: "去地图划街巷", desc: "标注走过的路，点亮城区", icon: MapPinned },
-            { href: "/diary", title: "写探索日记", desc: "见闻、心情、同行人", icon: NotebookPen },
-            { href: "/plan", title: "本周末计划", desc: "自动串起 3-5 条待走街巷", icon: Route },
-            { href: "/diary?tab=knowledge", title: "知识卡片", desc: "地名由来、文物古迹、商圈对比", icon: Sparkles },
-          ].map(({ href, title, desc, icon: Icon }) => (
-            <Link key={title} href={href} className="group">
-              <GlassCard className="flex min-h-20 items-center gap-3 p-4 transition-transform group-active:scale-[0.98]">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                  <Icon className="size-5" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{title}</span>
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">{desc}</span>
-                </span>
-                <ChevronRight
-                  className="size-4 shrink-0 text-muted-foreground/60 transition-transform group-active:translate-x-0.5"
-                  aria-hidden
-                />
-              </GlassCard>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* 最近点亮 */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">最近点亮</h2>
-        {stats.recent.length === 0 ? (
-          <GlassCard className="border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              还没有点亮任何街巷。去地图画下第一条，或者先「载入示例数据」看看效果（在「我的」页）。
+          <GlassCard className="ml-auto rounded-full px-3 py-1.5">
+            <p className="font-mono text-[11px] text-muted-foreground tabular-nums">
+              <span className="font-bold text-primary">{stats.doneCount}</span> 条 ·{" "}
+              {stats.totalKm.toFixed(1)} km · {stats.coverage}%
             </p>
           </GlassCard>
-        ) : (
-          <GlassCard className="p-4">
-            <ul className="divide-y divide-border/60">
-              {stats.recent.map((street, index) => (
-                <li key={street.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-chart-1/15 font-mono text-xs font-bold text-chart-1 tabular-nums">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{street.name}</span>
-                    <span className="block text-xs text-muted-foreground">{street.region}</span>
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                    {street.lastWalkedAt?.slice(5).replace("-", "/")}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </GlassCard>
+        </div>
+
+        {/* 未配置底图 Key 的提示 */}
+        <TiandituKeyHint />
+
+        {/* 右上角工具组 */}
+        <div className="glass absolute right-3 top-12 z-[1000] flex flex-col gap-1.5 rounded-2xl p-1.5">
+          <ToolButton
+            label="回到家"
+            onClick={() => setGoHomeSignal((n) => n + 1)}
+            icon={<Home className="size-4" />}
+          />
+          <ToolButton
+            label="全览街巷"
+            onClick={() => setFitAllSignal((n) => n + 1)}
+            icon={<Maximize2 className="size-4" />}
+          />
+          <ToolButton
+            label="热力图"
+            active={heatmap}
+            onClick={() => setHeatmap((v) => !v)}
+            icon={<Flame className="size-4" />}
+          />
+        </div>
+
+        {/* 绘制中工具条 */}
+        {mode === "draw" && (
+          <DrawToolbar
+            pointCount={drawPath.length}
+            drawKm={drawKm}
+            editingName={editingStreet?.name}
+            onUndo={() => setDrawPath((p) => p.slice(0, -1))}
+            onCancel={resetDraw}
+            onFinish={() => setSaveOpen(true)}
+          />
         )}
-      </section>
+
+        {/* 浏览模式右下角：知识卡图层 + 勾选区域 */}
+        {mode === "browse" && (
+          <>
+            <div className="glass absolute bottom-4 right-3 z-[1000] flex flex-col gap-1.5 rounded-2xl p-1.5">
+              <ToolButton
+                label="知识卡片"
+                active={showKnowledge}
+                onClick={() => setShowKnowledge((v) => !v)}
+                icon={<Tags className="size-4" />}
+              />
+              <ToolButton
+                label="勾选区域"
+                onClick={() => setRegionSheetOpen(true)}
+                icon={<ListChecks className="size-4" />}
+              />
+            </div>
+
+            {/* 左下角主入口：画街巷 */}
+            <button
+              type="button"
+              onClick={startDraw}
+              className="absolute bottom-4 left-3 z-[1000] flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-br from-primary to-chart-2 px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-[0.97]"
+            >
+              <Pencil className="size-4" aria-hidden />
+              画街巷
+            </button>
+
+            {/* 空状态引导 */}
+            {streets.length === 0 && (
+              <GlassCard className="absolute inset-x-12 bottom-20 z-[1000] border-dashed p-4 text-center">
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  还没有任何街巷。点「画街巷」沿家门口的小路点几个点，保存后地图就会亮起第一缕光 ✨
+                </p>
+              </GlassCard>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 保存 / 更新街巷对话框（含关键点命名） */}
+      <SaveStreetDialog
+        open={saveOpen}
+        onOpenChange={setSaveOpen}
+        drawPath={drawPath}
+        regions={regions}
+        editing={editingStreet}
+        onSave={handleSaveStreet}
+      />
+
+      {/* 区域勾选抽屉 */}
+      <RegionSheet
+        open={regionSheetOpen}
+        onOpenChange={setRegionSheetOpen}
+        streets={streets}
+        onToggleStatus={toggleStreetStatus}
+        onRedraw={handleRedraw}
+      />
     </div>
+  );
+}
+
+function ToolButton({
+  label,
+  icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={cn(
+        "flex size-9 items-center justify-center rounded-xl transition-colors",
+        active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted/70",
+      )}
+    >
+      {icon}
+    </button>
   );
 }

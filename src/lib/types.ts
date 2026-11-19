@@ -1,15 +1,14 @@
 /**
- * City Glow 数据模型（localStorage Schema）
+ * City Glow 数据模型（localStorage Schema v3）
  *
- * 所有数据按 key 分片存储：
- *   cityGlow.settings / cityGlow.streets / cityGlow.records /
- *   cityGlow.knowledge / cityGlow.achievements
+ * v3 起全部数据合并存储在单一 key `cityGlow-store`（CityGlowStore），
+ * 备份 JSON 的 data 字段与线上数据完全同构。
  * 读写统一走 src/lib/storage.ts，禁止组件直接访问 localStorage。
  *
  * schemaVersion 用于跨年升级时的字段迁移——这是让数据能用十年的保险。
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** 城市档案：City Glow 支持多城市（常驻地 + 老家 + 旅行城市……） */
 export interface CityInfo {
@@ -23,7 +22,6 @@ export interface CityInfo {
 }
 
 export interface CityGlowSettings {
-  schemaVersion: number;
   /** 城市列表（≥1），activeCityId 指向其中 */
   cities: CityInfo[];
   activeCityId: string;
@@ -35,6 +33,21 @@ export type StreetStatus = "done" | "doing" | "todo";
 export type StreetPriority = "high" | "medium" | "low";
 export type StreetDifficulty = "easy" | "medium" | "hard";
 
+/**
+ * 街巷关键点：起点 / 转弯点 / 终点的结构化记录。
+ * 修路导致路径变化时，凭命名关键点 + 全量 path 坐标即可重新描画找回路。
+ */
+export type StreetWaypointKind = "start" | "turn" | "end";
+
+export interface StreetWaypoint {
+  id: string;
+  kind: StreetWaypointKind;
+  /** 自定义名称（如"鼓楼口"），可空 */
+  name?: string;
+  lat: number;
+  lng: number;
+}
+
 export interface Street {
   id: string;
   /** 所属城市（CityInfo.id） */
@@ -43,14 +56,16 @@ export interface Street {
   name: string;
   /** 如"海曙老城 / 江北外滩 / 鄞州中心 / 东部新城" */
   region: string;
-  /** [lat, lng] 路径点序列，绘制时沿路径点击生成 */
+  /** [lat, lng] 路径点序列，绘制时沿路径点击生成（全部坐标） */
   path: [number, number][];
+  /** 关键点（起点/转弯点/终点），保存街巷时由 path 自动派生，可命名 */
+  waypoints?: StreetWaypoint[];
   status: StreetStatus;
   lengthKm: number;
   /** 最近一次走过的日期（ISO 8601） */
   lastWalkedAt?: string;
   notes?: string;
-  /** 待走池优先级（Phase 4 路线规划用） */
+  /** 待走池优先级（路线规划用） */
   priority?: StreetPriority;
   /** 难度（孩子体力 / 距离考量） */
   difficulty?: StreetDifficulty;
@@ -70,7 +85,7 @@ export interface ExplorationRecord {
   insights: string;
   /** 心情 emoji */
   mood: string;
-  /** base64 照片（注意体积，后续可换 IndexedDB） */
+  /** base64 照片（注意体积，照片量大后应迁 IndexedDB） */
   photos?: string[];
 }
 
@@ -88,6 +103,8 @@ export interface KnowledgeCard {
   cityId: string;
   /** 关联街巷，可选 */
   streetId?: string;
+  /** 自定义落点（不关联街巷时可指定），可选 */
+  location?: { lat: number; lng: number };
   title: string;
   /** 正文 Markdown */
   content: string;
@@ -111,12 +128,18 @@ export interface Achievements {
   stats: AchievementStats;
 }
 
+/** 业务数据（备份 JSON 的 data 字段同此结构） */
 export interface CityGlowData {
   settings: CityGlowSettings;
   streets: Street[];
   records: ExplorationRecord[];
   knowledge: KnowledgeCard[];
   achievements: Achievements;
+}
+
+/** localStorage `cityGlow-store` 单 key 的完整存储结构 */
+export interface CityGlowStore extends CityGlowData {
+  schemaVersion: number;
 }
 
 /**
@@ -127,7 +150,6 @@ export const LEGACY_CITY_ID = "city-legacy";
 /** 首次使用时的默认数据 */
 export const DEFAULT_DATA: CityGlowData = {
   settings: {
-    schemaVersion: SCHEMA_VERSION,
     cities: [
       {
         id: LEGACY_CITY_ID,

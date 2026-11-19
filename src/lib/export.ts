@@ -64,7 +64,6 @@ export function mergeBackup(local: CityGlowData, backup: BackupFile): CityGlowDa
   const incoming = migrateData(backup.data);
   const cities = mergeById(local.settings.cities, incoming.settings.cities);
   const settings: CityGlowData["settings"] = {
-    schemaVersion: SCHEMA_VERSION,
     cities,
     activeCityId: cities.some((c) => c.id === incoming.settings.activeCityId)
       ? incoming.settings.activeCityId

@@ -90,7 +90,7 @@ export function CitySwitcher({ className }: { className?: string }) {
               type="button"
               onClick={() => {
                 setOpen(false);
-                router.push("/profile#cities");
+                router.push("/profile/settings#cities");
               }}
               className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-dashed border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60"
             >

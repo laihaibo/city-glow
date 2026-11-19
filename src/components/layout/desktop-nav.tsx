@@ -6,7 +6,7 @@ import { Sparkles } from "lucide-react";
 import { cn } from "cn";
 import { isNavItemActive, NAV_ITEMS } from "@/components/layout/nav-items";
 
-/** 桌面端顶部导航（≥lg 显示），居中 max-w-3xl 与内容容器对齐 */
+/** 桌面端顶部导航（≥lg 显示），居中 max-w-3xl 与内容容器对齐；「首页」主出口加粗强调 */
 export function DesktopNav() {
   const pathname = usePathname();
 
@@ -21,8 +21,24 @@ export function DesktopNav() {
           <span className="text-sm font-normal text-muted-foreground">点亮城市</span>
         </Link>
         <nav aria-label="主导航" className="flex items-center gap-1">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {NAV_ITEMS.map(({ href, label, icon: Icon, center }) => {
             const active = isNavItemActive(pathname, href);
+            if (center) {
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]",
+                    "bg-gradient-to-br from-primary to-chart-2 shadow-md shadow-primary/25",
+                  )}
+                >
+                  <Icon className="size-4" strokeWidth={2.2} aria-hidden />
+                  {label}
+                </Link>
+              );
+            }
             return (
               <Link
                 key={href}
